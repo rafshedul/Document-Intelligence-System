@@ -1,9 +1,13 @@
 from decimal import Decimal
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    # Real environment variables win; otherwise read backend/.env, then the project's .env.
+    # (In Docker the variables come from compose, and no .env file exists in the image.)
+    model_config = SettingsConfigDict(env_file=("../.env", ".env"), extra="ignore")
+
     # "development" allows running without a token; anything else requires API_AUTH_TOKEN.
     environment: str = "production"
     api_auth_token: str = ""  # shared secret for the API; generate with: openssl rand -hex 32

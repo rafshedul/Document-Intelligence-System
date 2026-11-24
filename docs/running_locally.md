@@ -2,6 +2,15 @@
 
 One-time setup (already done on this machine): `backend/.venv` holds the Python packages (`pip install -r backend/requirements.txt python-multipart`), `cd frontend && npm install`. Tesseract: `brew install tesseract`. Postgres with pgvector must be running and migrated (`alembic upgrade head`).
 
+The backend reads `backend/.env` (git-ignored), then the project's `.env`; real environment variables override both. For local use put `ENVIRONMENT=development`, `LLM_PROVIDER=demo`, `TASK_BACKEND=inline`, `DATABASE_URL=...` in `backend/.env`; then no `export` and no login are needed:
+
+```bash
+# backend
+cd backend && .venv/bin/uvicorn app.main:app --reload --port 8000
+```
+
+The explicit version, without a `backend/.env`:
+
 ```bash
 # Terminal 1: backend  (http://localhost:8000/docs)
 cd backend
