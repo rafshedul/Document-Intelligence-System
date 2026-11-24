@@ -1,14 +1,18 @@
-"""API authentication: one shared bearer token, checked in constant time.
+"""API authentication: one shared bearer token (an API key), checked in constant time.
 
 Fails closed: outside ENVIRONMENT=development a missing token is a server error, never open access.
 """
 import hmac
 
-from fastapi import Header, HTTPException
+from fastapi import HTTPException, Security
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core.config import settings
 
 MIN_TOKEN_LENGTH = 16
+# auto_error=False so we return our own JSON error; the scheme still shows up in the OpenAPI docs
+# (the "Authorize" button in Swagger UI).
+bearer = HTTPBearer(auto_error=False, description="API_AUTH_TOKEN")
 
 
 def check_configuration() -> None:
@@ -22,12 +26,12 @@ def check_configuration() -> None:
         )
 
 
-def require_auth(authorization: str | None = Header(default=None)) -> None:
+def require_auth(credentials: HTTPAuthorizationCredentials | None = Security(bearer)) -> None:
     token = settings.api_auth_token
     if not token:
         if settings.environment == "development":
             return
         raise HTTPException(503, "Server is misconfigured: API_AUTH_TOKEN is not set.")
-    supplied = authorization[7:].strip() if authorization and authorization[:7].lower() == "bearer " else ""
+    supplied = credentials.credentials.strip() if credentials and credentials.scheme.lower() == "bearer" else ""
     if not hmac.compare_digest(supplied.encode(), token.encode()):
         raise HTTPException(401, "Invalid or missing token.", headers={"WWW-Authenticate": "Bearer"})

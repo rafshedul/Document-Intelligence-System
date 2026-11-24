@@ -37,9 +37,13 @@ cd backend && .venv/bin/uvicorn app.main:app --port 8000
 cd frontend && npm run dev
 ```
 
-Quick try without an API key: set `ENVIRONMENT=development`, `LLM_PROVIDER=demo`, `TASK_BACKEND=inline` in `.env`, then upload files from `sample_data/` in the web page. The `demo` extractor is a rule-based stand-in, not an AI model. For real extraction use `LLM_PROVIDER=anthropic` and set `LLM_API_KEY`. More in [docs/running_locally.md](docs/running_locally.md).
+Quick try without an API key or Redis: set `ENVIRONMENT=development`, `LLM_PROVIDER=demo`, `TASK_BACKEND=inline` in `backend/.env`, then upload files from `sample_data/` in the web page. The `demo` extractor is a rule-based stand-in, not an AI model. For real extraction use `LLM_PROVIDER=anthropic` and set `LLM_API_KEY`. More in [docs/running_locally.md](docs/running_locally.md).
 
 With Docker: `docker compose up --build` (set `API_AUTH_TOKEN` in `.env` first: `openssl rand -hex 32`).
+
+## API
+
+Upload, list, status, result, manual correction, reprocess and delete: see [docs/api.md](docs/api.md) or open `/docs` (Swagger UI) on the running backend. Background work runs in Celery with retries and per-stage progress.
 
 ## Tests
 

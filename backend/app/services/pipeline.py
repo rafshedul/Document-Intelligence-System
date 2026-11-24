@@ -12,7 +12,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from sqlalchemy import delete
+from sqlalchemy import delete, update
 from sqlalchemy.orm import Session
 
 from app.models import Document, DocumentPage, DocumentStatus, ProcessingHistory
@@ -29,6 +29,22 @@ class Outcome:
     failed_pages: list = field(default_factory=list)
     error_code: str | None = None
     error_message: str | None = None
+    retryable: bool = False  # a temporary problem: trying again later may work
+
+
+# (start %, end %) of the overall progress bar for each stage
+STAGE_PROGRESS = {
+    "validate_file": (0, 5), "extract_text": (5, 50), "segment": (50, 52), "extract_fields": (52, 80),
+    "save_results": (80, 85), "validate": (85, 95), "embed": (95, 100),
+}
+
+
+def mark_progress(session: Session, document_id: uuid.UUID, stage: str | None, pct: int) -> None:
+    """Record where the document is (`stage`) and how far along (0-100). Committed at once so the
+    status endpoint sees it while the stage is still running."""
+    session.execute(update(Document).where(Document.id == document_id)
+                    .values(stage=stage, progress=max(0, min(100, int(pct)))))
+    session.commit()
 
 
 @contextmanager
@@ -40,12 +56,17 @@ def stage(session: Session, document_id: uuid.UUID, name: str):
     session.add(row)
     session.commit()
     row_id = row.id
+    lo_hi = STAGE_PROGRESS.get(name)
+    if lo_hi:
+        mark_progress(session, document_id, name, lo_hi[0])
     t0 = time.perf_counter()
     details: dict = {}
     status = "failed"
     try:
         yield details
         status = "succeeded"
+        if lo_hi:
+            mark_progress(session, document_id, name, lo_hi[1])
     except Exception as exc:
         session.rollback()
         details["error_type"] = type(exc).__name__
@@ -84,6 +105,8 @@ def process_document(session: Session, document_id: uuid.UUID) -> Outcome:
             # Idempotent: a retry replaces earlier pages.
             session.execute(delete(DocumentPage).where(DocumentPage.document_id == document_id))
             total = 0
+            lo, hi = STAGE_PROGRESS["extract_text"]
+            pages_known = extraction.info.get("page_count") if detection.kind.value in ("pdf", "image") else None
             for batch in extraction.batches:
                 session.add_all(
                     DocumentPage(
@@ -97,6 +120,8 @@ def process_document(session: Session, document_id: uuid.UUID) -> Outcome:
                 )
                 session.commit()  # bounded memory + visible progress
                 total += len(batch)
+                if pages_known:  # progress by page, so a 1000-page PDF moves while it runs
+                    mark_progress(session, document_id, "extract_text", lo + (hi - lo) * total / pages_known)
             d.update(extraction.info)
             d["pages_saved"] = total
 
@@ -108,12 +133,12 @@ def process_document(session: Session, document_id: uuid.UUID) -> Outcome:
 
     except DocumentProcessingError as exc:
         _fail(session, document_id, exc.message)
-        return Outcome(ok=False, error_code=exc.code, error_message=exc.message)
+        return Outcome(ok=False, error_code=exc.code, error_message=exc.message, retryable=False)
     except Exception:
         log.exception("Unexpected error processing document %s", document_id)
         msg = "An unexpected error occurred while processing this file."
         _fail(session, document_id, msg)
-        return Outcome(ok=False, error_code="internal_error", error_message=msg)
+        return Outcome(ok=False, error_code="internal_error", error_message=msg, retryable=True)
     finally:
         if extraction is not None:
             extraction.close()

@@ -11,12 +11,15 @@
 | Untrusted text | Document text is wrapped in tags and the prompt tells the model to ignore instructions inside it. Model output is schema-validated and every value must be traceable to the text, so injected instructions cannot add data that is not in the document. The model has no tools and no write access. |
 | Errors | Users see short messages. Tracebacks go to the server log and `processing_history`, not to API responses. |
 | Browser | CORS limited to `CORS_ORIGINS` and to GET/POST; `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Cache-Control: no-store` on API responses. The token is kept in `sessionStorage` (cleared when the tab closes). |
-| Surface | `/docs` and `/openapi.json` exist only in development. Postgres and Redis are not published to the host by `docker-compose.yml`. |
+| Surface | Swagger UI (`/docs`) is on by default and can be hidden with `DOCS_ENABLED=false`; every endpoint behind it still needs the token. Postgres and Redis are not published to the host by `docker-compose.yml`. |
+| Rate limiting | Uploads: `UPLOAD_RATE_LIMIT_PER_MINUTE` files per client IP (default 60), 429 with `Retry-After`. In memory per process: with several API replicas each counts separately, so add a limit at the reverse proxy too. |
+| Error format | Every error is `{"error": {code, message, details?, request_id}}`. Stack traces and exception text never reach the client; they are logged with the same `request_id` (also sent as the `X-Request-ID` header). |
+| Filenames | The display name keeps only the last path component and drops control characters; files are stored under a random name, so `../../x` cannot reach another folder. |
 
 ## Not done yet (do these before real use)
 
 - **No user accounts.** One shared token means everyone who has it sees every document. Needed: users, password hashing or SSO, roles, and `owner/tenant` columns enforced in every query.
-- **No rate limiting or brute-force protection** on the token; put the API behind a reverse proxy that rate-limits.
+- **No brute-force protection** on the token itself (only uploads are rate limited); put the API behind a reverse proxy that rate-limits every route.
 - **No TLS.** Serve behind HTTPS (the token and the invoices travel in clear text otherwise).
 - `sessionStorage` tokens can be read by any script on the page; a cookie-based session (HttpOnly) is the better design once accounts exist.
 - Invoices contain financial and personal data and are sent to the LLM provider: review the provider's retention terms. Encrypt disks and backups.

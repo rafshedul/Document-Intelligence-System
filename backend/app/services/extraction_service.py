@@ -18,7 +18,7 @@ from decimal import Decimal
 from typing import Any
 
 from pydantic import ValidationError as PydanticValidationError
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -75,6 +75,7 @@ class InvoiceData:
     raw: dict = field(default_factory=dict)
     needs_review: bool = False  # LLM output unusable
     fatal: str | None = None  # LLM unavailable / rejected: abort the document
+    fatal_retryable: bool = False  # ...and trying again later may work (outage, not a bad key)
 
 
 @dataclass
@@ -83,6 +84,7 @@ class ExtractionOutcome:
     invoices: int = 0
     needs_review: int = 0
     error_message: str | None = None
+    retryable: bool = False  # the LLM was only temporarily unavailable, or an unexpected error
 
 
 # ---- LLM extraction for one invoice -----------------------------------------------
@@ -128,7 +130,10 @@ def extract_segment(llm: LLMClient, text: str, index: int, page_start, page_end,
         data.issues.append(Issue("EXTRACT_LLM_REFUSED", Severity.error, str(exc)))
         data.raw = {"prompt": PROMPT_NAME, "source": "llm", "attempts": attempts}
         return data
-    except (LLMUnavailableError, LLMError) as exc:
+    except LLMUnavailableError as exc:
+        data.fatal, data.fatal_retryable = str(exc), True
+        return data
+    except LLMError as exc:
         data.fatal = str(exc)
         return data
 
@@ -214,22 +219,28 @@ def invoice_from_mapping(inv: spreadsheet_mapper.MappedInvoice, index: int, page
 
 # ---- orchestration ----------------------------------------------------------------------
 
-def extract_document(session: Session, document_id, llm: LLMClient | None = None) -> ExtractionOutcome:
-    """Extract and save all invoices of a document. Never raises for LLM/data problems."""
+def extract_document(session: Session, document_id, llm: LLMClient | None = None,
+                     version: int | None = None) -> ExtractionOutcome:
+    """Extract and save all invoices of a document. Never raises for LLM/data problems.
+
+    `version` pins the result version (the pipeline passes the attempt number); running the same
+    version again replaces its rows instead of adding duplicates. Without it, a new version is added."""
     doc = session.get(Document, document_id)
     if doc is None:
         raise LookupError(f"Document {document_id} does not exist")
     try:
-        return _extract(session, doc, llm or get_llm_client())
-    except LLMError as exc:  # fatal provider problem (bad key, retries exhausted)
+        return _extract(session, doc, llm or get_llm_client(), version)
+    except LLMUnavailableError as exc:  # retries inside the call ran out: worth trying again later
+        return _mark(session, document_id, DocumentStatus.failed, str(exc), retryable=True)
+    except LLMError as exc:  # fatal provider problem (bad key, bad request)
         return _mark(session, document_id, DocumentStatus.failed, str(exc))
     except Exception:
         log.exception("Unexpected error extracting document %s", document_id)
         return _mark(session, document_id, DocumentStatus.failed,
-                     "An unexpected error occurred while extracting the invoice data.")
+                     "An unexpected error occurred while extracting the invoice data.", retryable=True)
 
 
-def _extract(session: Session, doc: Document, llm: LLMClient) -> ExtractionOutcome:
+def _extract(session: Session, doc: Document, llm: LLMClient, pinned_version: int | None) -> ExtractionOutcome:
     pages = session.execute(
         select(DocumentPage.page_number, DocumentPage.extracted_text, DocumentPage.extraction_method)
         .where(DocumentPage.document_id == doc.id).order_by(DocumentPage.page_number)
@@ -279,17 +290,22 @@ def _extract(session: Session, doc: Document, llm: LLMClient) -> ExtractionOutco
         d.update(llm_calls=stats.attempts, retries=stats.retries, rate_limited=stats.rate_limited,
                  input_tokens=stats.input_tokens, output_tokens=stats.output_tokens, model=settings.llm_model,
                  prompt=PROMPT_NAME)
-        fatal = next((r.fatal for r in llm_results.values() if r.fatal), None)
-        if fatal:
-            raise LLMUnavailableError(fatal)
+        failed = next((r for r in llm_results.values() if r.fatal), None)
+        if failed:
+            raise (LLMUnavailableError if failed.fatal_retryable else LLMError)(failed.fatal)
 
     invoices = mapped + [llm_results[i] for i in sorted(llm_results)]
     for n, inv in enumerate(invoices):
         inv.invoice_index = n
 
     with stage(session, doc.id, "save_results") as d:
-        version = (session.scalar(select(func.max(ExtractedResult.version))
-                                  .where(ExtractedResult.document_id == doc.id)) or 0) + 1
+        if pinned_version is not None:
+            version = pinned_version  # idempotent: redo of the same attempt replaces its own rows
+            session.execute(delete(ExtractedResult).where(ExtractedResult.document_id == doc.id,
+                                                          ExtractedResult.version == version))
+        else:
+            version = (session.scalar(select(func.max(ExtractedResult.version))
+                                      .where(ExtractedResult.document_id == doc.id)) or 0) + 1
         for n, inv in enumerate(invoices, start=1):
             _save_invoice(session, doc.id, inv, version)
             if n % 100 == 0:
@@ -339,10 +355,11 @@ def _as_date(v: Any):
     return v if isinstance(v, date) or v is None else date.fromisoformat(v)
 
 
-def _mark(session: Session, document_id, status: DocumentStatus, message: str) -> ExtractionOutcome:
+def _mark(session: Session, document_id, status: DocumentStatus, message: str,
+          retryable: bool = False) -> ExtractionOutcome:
     session.rollback()
     doc = session.get(Document, document_id)
     doc.status = status
     doc.error_message = message
     session.commit()
-    return ExtractionOutcome(False, error_message=message)
+    return ExtractionOutcome(False, error_message=message, retryable=retryable)

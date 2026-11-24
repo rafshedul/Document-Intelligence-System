@@ -16,11 +16,18 @@ def prod(monkeypatch):
     return TestClient(create_app())
 
 
-def test_api_requires_the_token(prod):
-    assert prod.get("/api/info").status_code == 401
-    assert prod.get("/api/documents").status_code == 401
-    assert prod.post("/api/documents", files={"file": ("a.csv", b"x")}).status_code == 401
-    assert prod.get("/api/documents/00000000-0000-0000-0000-000000000000").status_code == 401
+ID = "00000000-0000-0000-0000-000000000000"
+
+
+@pytest.mark.parametrize("method,path", [
+    ("GET", "/api/info"), ("GET", "/api/documents"), ("POST", "/api/documents/upload"),
+    ("GET", f"/api/documents/{ID}"), ("GET", f"/api/documents/{ID}/status"), ("GET", f"/api/documents/{ID}/result"),
+    ("PATCH", f"/api/documents/{ID}/result"), ("POST", f"/api/documents/{ID}/reprocess"),
+    ("DELETE", f"/api/documents/{ID}"),
+])
+def test_every_api_endpoint_requires_the_token(prod, method, path):
+    r = prod.request(method, path)
+    assert r.status_code == 401 and r.json()["error"]["code"] == "unauthorized"  # not 404/422: auth comes first
 
 
 @pytest.mark.parametrize("header", ["Bearer wrong-token", "Bearer", "Basic " + TOKEN, TOKEN, "bearer ", ""])
@@ -68,13 +75,9 @@ def test_a_configured_token_is_enforced_even_in_development(monkeypatch):
     assert TestClient(create_app()).get("/api/info").status_code == 401
 
 
-def test_api_docs_exist_only_in_development(monkeypatch):
-    monkeypatch.setattr(settings, "environment", "production")
-    monkeypatch.setattr(settings, "api_auth_token", TOKEN)
-    p = TestClient(create_app())
-    assert p.get("/docs").status_code == 404 and p.get("/openapi.json").status_code == 404
-    monkeypatch.setattr(settings, "environment", "development")
-    assert TestClient(create_app()).get("/docs").status_code == 200
+def test_api_docs_are_on_but_the_endpoints_stay_protected(prod):
+    assert prod.get("/docs").status_code == 200 and prod.get("/openapi.json").status_code == 200
+    assert prod.get("/api/documents").status_code == 401
 
 
 def test_security_headers_and_no_caching(prod):
@@ -88,7 +91,8 @@ def test_cors_only_for_configured_origins(prod):
     assert ok.headers.get("access-control-allow-origin") == "http://localhost:3000"
     bad = prod.options("/api/documents", headers={"Origin": "https://evil.example", "Access-Control-Request-Method": "POST"})
     assert "access-control-allow-origin" not in bad.headers
-    assert "DELETE" not in ok.headers.get("access-control-allow-methods", "")
+    allowed = ok.headers.get("access-control-allow-methods", "")
+    assert "PATCH" in allowed and "DELETE" in allowed and "PUT" not in allowed
 
 
 def test_token_comparison_is_constant_time():

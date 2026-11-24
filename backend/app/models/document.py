@@ -42,6 +42,9 @@ class Document(UUIDPrimaryKey, Timestamps, Base):
         server_default=DocumentStatus.queued.value,
     )
     error_message: Mapped[str | None] = mapped_column(Text)
+    # Where the pipeline is right now, and how far along (0-100). stage is "done" when finished.
+    stage: Mapped[str | None] = mapped_column(String(64))
+    progress: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     # Completed, but with unresolved validation warnings a reviewer should look at.
     is_flagged: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
 

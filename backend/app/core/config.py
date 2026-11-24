@@ -12,7 +12,12 @@ class Settings(BaseSettings):
     environment: str = "production"
     api_auth_token: str = ""  # shared secret for the API; generate with: openssl rand -hex 32
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
-    task_backend: str = "inline"  # "celery" (Redis worker) or "inline" (FastAPI background task)
+    task_backend: str = "celery"  # "celery" (Redis worker) or "inline" (FastAPI background task, dev only)
+    docs_enabled: bool = True  # Swagger UI at /docs; the endpoints themselves still need the token
+    max_files_per_upload: int = 20
+    upload_rate_limit_per_minute: int = 60  # files per client IP per minute
+    task_max_retries: int = 3
+    task_retry_backoff_seconds: float = 5.0  # waits 5s, 10s, 20s (doubling)
     database_url: str
     redis_url: str
     upload_dir: str = "/data/uploads"
@@ -45,6 +50,12 @@ class Settings(BaseSettings):
     llm_backoff_base_seconds: float = 1.0
     llm_backoff_max_seconds: float = 60.0
     llm_max_validation_retries: int = 2  # re-asks after invalid JSON (so up to 3 calls)
+    # Embeddings: "hash" = built-in lexical hashing (no model, for demos/tests), "none" = skip the stage
+    embedding_provider: str = "hash"
+    embedding_chunk_chars: int = 1000
+    embedding_chunk_overlap: int = 150
+    embedding_batch_size: int = 64
+
     # Validation
     validation_tolerance: Decimal = Decimal("0.02")  # rounding tolerance for sums and products
     validation_max_amount: Decimal = Decimal("100000000")  # larger money amounts are "unusually large"

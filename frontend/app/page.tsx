@@ -4,15 +4,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const TOKEN_KEY = "docintel_token";
 
-type Row = { id: string; filename: string; status: string; flagged: boolean; file_type: string; page_count: number | null;
-  created_at: string; errors: number; warnings: number };
-type Field = { value: string | null; confidence?: number; source_snippet?: string | null };
+type Row = { id: string; filename: string; status: string; stage: string | null; progress: number; flagged: boolean; file_type: string;
+  page_count: number | null; created_at: string; errors: number; warnings: number };
+type Field = { value: string | null; confidence?: number; source_snippet?: string | null; manual?: boolean };
 type Detail = {
-  id: string; filename: string; status: string; flagged: boolean; file_type: string; file_size: number;
-  page_count: number | null; error_message: string | null;
+  id: string; filename: string; status: string; stage: string | null; progress: number; flagged: boolean; file_type: string;
+  file_size: number; page_count: number | null; error_message: string | null;
   history: { stage: string; status: string; duration_ms: number | null; details: Record<string, any> | null }[];
   pages: { page: number; method: string; ocr_confidence: string | null; text: string }[];
-  results: { id: string; invoice_index: number; pages: number[]; source: string | null; fields: Record<string, Field>;
+  results: { id: string; invoice_index: number; pages: (number | null)[]; source: string | null; is_manually_corrected?: boolean; fields: Record<string, Field>;
     line_items: { position: number; description: string | null; quantity: string | null; unit_price: string | null; line_total: string | null }[] }[];
   findings: { rule_code: string; severity: string; field: string | null; message: string; resolved: boolean }[];
 };
@@ -21,6 +21,11 @@ const FIELD_LABELS: Record<string, string> = { invoice_number: "Invoice number",
   customer_name: "Customer", subtotal: "Subtotal", tax: "Tax", total: "Total", currency: "Currency" };
 const MONEY = new Set(["subtotal", "tax", "total"]);
 const ACTIVE = new Set(["queued", "processing"]);
+const PAGE_SIZE = 10;
+const errText = (j: any, fallback: string) => j?.error?.message ? j.error.message + (j.error.details?.problems ? ": " + j.error.details.problems.map((p: any) => `${p.field} ${p.message}`).join("; ") : "") : fallback;
+
+const Progress = ({ p, stage }: { p: number; stage?: string | null }) => (
+  <span title={stage ?? ""}><span className="bar" style={{ width: 90 }}><i style={{ width: `${p}%` }} /></span>{p}%{stage && stage !== "done" ? ` · ${stage}` : ""}</span>);
 
 const Badge = ({ s, children }: { s: string; children?: React.ReactNode }) => <span className={`badge ${s}`}>{children ?? s.replace("_", " ")}</span>;
 const Conf = ({ c }: { c?: number }) => c === undefined ? null :
@@ -35,6 +40,10 @@ export default function Home() {
   const [over, setOver] = useState(false);
   const [offline, setOffline] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [statusFilter, setStatusFilter] = useState("");
   const [needLogin, setNeedLogin] = useState(false);
   const [signedIn, setSignedIn] = useState(false);  // set after mount: sessionStorage is not available during SSR
   useEffect(() => setSignedIn(!!sessionStorage.getItem(TOKEN_KEY)), [needLogin]);
@@ -51,10 +60,15 @@ export default function Home() {
   }, []);
 
   const loadList = useCallback(async () => {
-    try { const r = await api("/api/documents"); if (r.ok) { setRows(await r.json()); setNeedLogin(false); } setOffline(false); } catch { setOffline(true); }
-  }, [api]);
+    try { const q = new URLSearchParams({ page: String(page), page_size: String(PAGE_SIZE) }); if (statusFilter) q.set("status", statusFilter);
+      const r = await api(`/api/documents?${q}`);
+      if (r.ok) { const j = await r.json(); setRows(j.items); setTotal(j.total); setPages(Math.max(1, j.pages)); setNeedLogin(false); }
+      setOffline(false); } catch { setOffline(true); }
+  }, [api, page, statusFilter]);
   const loadDetail = useCallback(async (id: string) => {
-    try { const r = await api(`/api/documents/${id}`); if (r.ok) setDetail(await r.json()); } catch {}
+    try { const r = await api(`/api/documents/${id}`);
+      if (r.ok) { const j = await r.json(); setDetail({ ...j.document, results: j.results, findings: j.findings, history: j.history, pages: j.pages }); }
+      else if (r.status === 404) { setSel(null); setDetail(null); } } catch {}
   }, [api]);
 
   useEffect(() => { api("/api/info").then(r => r.ok ? r.json() : null).then(j => j && setInfo(j)).catch(() => {}); loadList(); }, [api, loadList, needLogin]);
@@ -69,17 +83,49 @@ export default function Home() {
   async function upload(files: FileList | null) {
     if (!files?.length) return;
     setMsg("");
-    for (const f of Array.from(files)) {
-      const fd = new FormData(); fd.append("file", f);
-      try {
-        const r = await api("/api/documents", { method: "POST", body: fd });
-        const j = await r.json();
-        if (r.status === 202) setSel(j.id);
-        else if (r.status === 409) { setMsg(`"${f.name}": ${j.detail.message} (as "${j.detail.filename}")`); setSel(j.detail.document_id); }
-        else setMsg(`"${f.name}": ${typeof j.detail === "string" ? j.detail : "upload failed"}`);
-      } catch { setMsg("Cannot reach the backend at " + API); }
-    }
+    const fd = new FormData();
+    Array.from(files).forEach(f => fd.append("files", f));  // all files in one request
+    try {
+      const r = await api("/api/documents/upload", { method: "POST", body: fd });
+      const j = await r.json().catch(() => ({}));
+      const results = r.status === 202 ? j.files : j?.error?.details?.files ?? [];
+      const bad = results.filter((f: any) => f.status === "rejected");
+      const lines = bad.map((f: any) => `"${f.filename}": ${f.error.message}`);
+      if (r.status !== 202 && lines.length === 0) lines.push(errText(j, "Upload failed."));
+      if (r.status === 429) lines.push("Wait a moment, then try again.");
+      setMsg(lines.join("\n"));
+      const firstOk = results.find((f: any) => f.status === "queued") ?? bad.find((f: any) => f.error?.existing_document_id);
+      if (firstOk) setSel(firstOk.id ?? firstOk.error.existing_document_id);
+    } catch { setMsg("Cannot reach the backend at " + API); }
+    setPage(1);
     loadList();
+  }
+
+  async function reprocess() {
+    if (!detail) return;
+    if (detail.results.some(x => x.is_manually_corrected) &&
+        !confirm("This document has manual corrections. Reprocessing creates a new extraction without them (the old version and the correction log are kept). Continue?")) return;
+    const r = await api(`/api/documents/${detail.id}/reprocess`, { method: "POST" });
+    if (!r.ok) setMsg(errText(await r.json().catch(() => ({})), "Could not reprocess."));
+    loadList(); loadDetail(detail.id);
+  }
+
+  async function remove() {
+    if (!detail || !confirm(`Delete "${detail.filename}" and all its data?`)) return;
+    const r = await api(`/api/documents/${detail.id}`, { method: "DELETE" });
+    if (r.ok) { setSel(null); setDetail(null); loadList(); }
+    else setMsg(errText(await r.json().catch(() => ({})), "Could not delete."));
+  }
+
+  async function correct(invoiceIndex: number, field: string, current: string | null) {
+    if (!detail) return;
+    const v = window.prompt(`New value for "${FIELD_LABELS[field] ?? field}" (empty clears it):`, current ?? "");
+    if (v === null) return;
+    const r = await api(`/api/documents/${detail.id}/result`, { method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ invoice_index: invoiceIndex, fields: { [field]: v }, corrected_by: "web" }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { setMsg(errText(j, "Could not save the correction.")); return; }
+    setMsg(""); loadList(); loadDetail(detail.id);
   }
 
   async function login(e: React.FormEvent) {
@@ -120,10 +166,14 @@ export default function Home() {
             <small>{info ? info.extensions.join("  ") : "PDF, JPG, PNG, TIFF, XLSX, XLS, CSV"}</small>
           </div>
           <input ref={input} type="file" multiple hidden onChange={e => { upload(e.target.files); e.target.value = ""; }} />
-          {msg && <div className="msg">{msg}</div>}
+          {msg && <div className="msg" style={{ whiteSpace: "pre-line" }}>{msg}</div>}
         </div>
         <div className="card">
-          <h2>Documents ({rows.length})</h2>
+          <h2>Documents ({total})</h2>
+          <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }} style={{ marginBottom: 4 }}>
+            <option value="">all statuses</option>
+            {["queued", "processing", "completed", "needs_review", "failed"].map(x => <option key={x} value={x}>{x.replace("_", " ")}</option>)}
+          </select>
           {rows.length === 0 && <div className="empty">Nothing yet. Try a file from <code>sample_data/</code>.</div>}
           {rows.map(r => (
             <div key={r.id} className={`doc ${sel === r.id ? "sel" : ""}`} onClick={() => setSel(r.id)}>
@@ -134,7 +184,12 @@ export default function Home() {
                 {r.warnings > 0 && <Badge s="warning">{r.warnings} warning{r.warnings > 1 ? "s" : ""}</Badge>}
                 <span>{r.file_type}{r.page_count ? ` · ${r.page_count} p` : ""}</span>
               </div>
+              {ACTIVE.has(r.status) && <div className="meta"><Progress p={r.progress} stage={r.stage} /></div>}
             </div>))}
+          {pages > 1 && <div className="row" style={{ marginTop: 10 }}>
+            <button disabled={page <= 1} onClick={() => setPage(page - 1)}>‹ Prev</button>
+            <span>page {page} of {pages}</span>
+            <button disabled={page >= pages} onClick={() => setPage(page + 1)}>Next ›</button></div>}
         </div>
       </div>
 
@@ -143,7 +198,11 @@ export default function Home() {
         {detail && <>
           <div className="card">
             <div className="row"><h2 style={{ margin: 0 }}>{detail.filename}</h2><Badge s={detail.status} />
-              {detail.flagged && <Badge s="flag">flagged: completed with warnings</Badge>}</div>
+              {detail.flagged && <Badge s="flag">flagged: completed with warnings</Badge>}
+              <span style={{ marginLeft: "auto" }} className="row">
+                {(detail.status === "failed" || detail.status === "needs_review") && <button onClick={reprocess}>Reprocess</button>}
+                <button onClick={remove}>Delete</button></span></div>
+            {ACTIVE.has(detail.status) && <div style={{ marginTop: 8 }}><Progress p={detail.progress} stage={detail.stage} /></div>}
             {detail.error_message && <p style={{ color: "var(--err)" }}>{detail.error_message}</p>}
           </div>
 
@@ -162,7 +221,10 @@ export default function Home() {
                 (pages {r.pages[0]}–{r.pages[1]}{r.source === "spreadsheet_mapping" ? " · mapped from columns, no LLM" : ""})</h2>
               <table><thead><tr><th>Field</th><th>Value</th><th>Confidence</th><th>Source snippet (from the document)</th></tr></thead><tbody>
                 {Object.entries(r.fields).map(([k, f]) => <tr key={k}><td>{FIELD_LABELS[k] ?? k}</td>
-                  <td className={MONEY.has(k) ? "num" : ""}>{f.value ?? <span className="null">null</span>}</td>
+                  <td className={MONEY.has(k) ? "num" : ""}>{f.value ?? <span className="null">null</span>}
+                    {f.manual && <span title="corrected by hand" style={{ color: "var(--accent)" }}> ✎</span>}
+                    {!ACTIVE.has(detail.status) && <a href="#" style={{ marginLeft: 8, fontSize: 12 }}
+                      onClick={e => { e.preventDefault(); correct(r.invoice_index, k, f.value); }}>edit</a>}</td>
                   <td>{f.value !== null && <Conf c={f.confidence} />}</td><td className="snip">{f.source_snippet ?? ""}</td></tr>)}
               </tbody></table>
               {r.line_items.length > 0 && <><h2 style={{ marginTop: 16 }}>Line items</h2>
