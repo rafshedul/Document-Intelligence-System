@@ -4,6 +4,11 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
+    # "development" allows running without a token; anything else requires API_AUTH_TOKEN.
+    environment: str = "production"
+    api_auth_token: str = ""  # shared secret for the API; generate with: openssl rand -hex 32
+    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+    task_backend: str = "inline"  # "celery" (Redis worker) or "inline" (FastAPI background task)
     database_url: str
     redis_url: str
     upload_dir: str = "/data/uploads"

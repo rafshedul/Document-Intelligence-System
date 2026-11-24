@@ -11,12 +11,14 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core import db
 from app.core.config import settings
+from app.core.security import require_auth
 from app.models import (
     Document, DocumentPage, DocumentStatus, ExtractedResult, ProcessingHistory, ValidationError as VErr,
 )
-from app.services import extraction_service, file_router, pipeline, validation_service
+from app.services import file_router
+from app.services.orchestrator import run_pipeline
 
-router = APIRouter(prefix="/api")
+router = APIRouter(prefix="/api", dependencies=[Depends(require_auth)])
 log = logging.getLogger(__name__)
 PAGE_TEXT_LIMIT = 4000
 
@@ -24,19 +26,6 @@ PAGE_TEXT_LIMIT = 4000
 def get_session():
     with db.SessionLocal() as s:
         yield s
-
-
-def run_pipeline(document_id: uuid.UUID) -> None:
-    """process -> extract -> validate. Each step records its own failures; nothing raises."""
-    try:
-        with db.SessionLocal() as s:
-            if not pipeline.process_document(s, document_id).ok:
-                return
-            if not extraction_service.extract_document(s, document_id).ok:
-                return
-            validation_service.validate_document(s, document_id)
-    except Exception:
-        log.exception("Pipeline crashed for %s", document_id)
 
 
 @router.get("/info")
@@ -78,7 +67,18 @@ async def upload(background: BackgroundTasks, file: UploadFile = File(...), sess
                    file_hash=digest, status=DocumentStatus.queued)
     session.add(doc)
     session.commit()
-    background.add_task(run_pipeline, doc.id)
+    if settings.task_backend == "celery":
+        from app.workers.tasks import process_document_task
+
+        try:
+            process_document_task.delay(str(doc.id))
+        except Exception:  # broker down: don't leave the document queued forever
+            log.exception("Could not enqueue %s", doc.id)
+            doc.status, doc.error_message = DocumentStatus.failed, "The processing queue is unavailable. Upload again later."
+            session.commit()
+            raise HTTPException(503, "The processing queue is unavailable. Try again later.")
+    else:
+        background.add_task(run_pipeline, doc.id)
     return {"id": str(doc.id), "status": doc.status.value}
 
 

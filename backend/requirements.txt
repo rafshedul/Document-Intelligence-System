@@ -1,8 +1,9 @@
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
 pydantic-settings==2.7.0
-celery[redis]==5.4.0
-redis==5.2.1
+celery[redis]==5.7.0
+kombu==5.7.0
+redis==8.2.0
 sqlalchemy==2.0.58
 alembic==1.20.1
 psycopg[binary]==3.2.3

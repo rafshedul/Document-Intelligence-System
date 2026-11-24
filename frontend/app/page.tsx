@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const TOKEN_KEY = "docintel_token";
 
 type Row = { id: string; filename: string; status: string; flagged: boolean; file_type: string; page_count: number | null;
   created_at: string; errors: number; warnings: number };
@@ -34,15 +35,29 @@ export default function Home() {
   const [over, setOver] = useState(false);
   const [offline, setOffline] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  const [needLogin, setNeedLogin] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);  // set after mount: sessionStorage is not available during SSR
+  useEffect(() => setSignedIn(!!sessionStorage.getItem(TOKEN_KEY)), [needLogin]);
+  const [tokenInput, setTokenInput] = useState("");
+  const [loginError, setLoginError] = useState("");
+
+  // fetch with the saved token; a 401 sends the user to the login box
+  const api = useCallback(async (path: string, init: RequestInit = {}) => {
+    const t = sessionStorage.getItem(TOKEN_KEY);
+    const headers = { ...(init.headers as Record<string, string>), ...(t ? { Authorization: `Bearer ${t}` } : {}) };
+    const r = await fetch(`${API}${path}`, { ...init, headers });
+    if (r.status === 401) { sessionStorage.removeItem(TOKEN_KEY); setNeedLogin(true); }
+    return r;
+  }, []);
 
   const loadList = useCallback(async () => {
-    try { const r = await fetch(`${API}/api/documents`); setRows(await r.json()); setOffline(false); } catch { setOffline(true); }
-  }, []);
+    try { const r = await api("/api/documents"); if (r.ok) { setRows(await r.json()); setNeedLogin(false); } setOffline(false); } catch { setOffline(true); }
+  }, [api]);
   const loadDetail = useCallback(async (id: string) => {
-    try { const r = await fetch(`${API}/api/documents/${id}`); if (r.ok) setDetail(await r.json()); } catch {}
-  }, []);
+    try { const r = await api(`/api/documents/${id}`); if (r.ok) setDetail(await r.json()); } catch {}
+  }, [api]);
 
-  useEffect(() => { fetch(`${API}/api/info`).then(r => r.json()).then(setInfo).catch(() => {}); loadList(); }, [loadList]);
+  useEffect(() => { api("/api/info").then(r => r.ok ? r.json() : null).then(j => j && setInfo(j)).catch(() => {}); loadList(); }, [api, loadList, needLogin]);
   useEffect(() => { if (sel) loadDetail(sel); else setDetail(null); }, [sel, loadDetail]);
   useEffect(() => {  // poll while anything is still running
     const busy = rows.some(r => ACTIVE.has(r.status)) || (detail && ACTIVE.has(detail.status));
@@ -57,7 +72,7 @@ export default function Home() {
     for (const f of Array.from(files)) {
       const fd = new FormData(); fd.append("file", f);
       try {
-        const r = await fetch(`${API}/api/documents`, { method: "POST", body: fd });
+        const r = await api("/api/documents", { method: "POST", body: fd });
         const j = await r.json();
         if (r.status === 202) setSel(j.id);
         else if (r.status === 409) { setMsg(`"${f.name}": ${j.detail.message} (as "${j.detail.filename}")`); setSel(j.detail.document_id); }
@@ -67,11 +82,30 @@ export default function Home() {
     loadList();
   }
 
+  async function login(e: React.FormEvent) {
+    e.preventDefault();
+    const r = await fetch(`${API}/api/info`, { headers: { Authorization: `Bearer ${tokenInput.trim()}` } });
+    if (r.ok) { sessionStorage.setItem(TOKEN_KEY, tokenInput.trim()); setTokenInput(""); setLoginError(""); setNeedLogin(false); setSignedIn(true); loadList(); }
+    else setLoginError(r.status === 401 ? "Wrong token." : `Server error (${r.status}).`);
+  }
+
   const demo = info?.llm_provider === "demo";
+  if (needLogin) return (
+    <main style={{ display: "block", maxWidth: 420, margin: "80px auto" }}>
+      <form className="card" onSubmit={login}>
+        <h2>Sign in</h2>
+        <p style={{ marginTop: 0 }}>Enter the API token (<code>API_AUTH_TOKEN</code> from the server's <code>.env</code>).</p>
+        <input type="password" autoFocus value={tokenInput} onChange={e => setTokenInput(e.target.value)}
+          placeholder="token" style={{ width: "100%", padding: 8, border: "1px solid var(--line)", borderRadius: 6 }} />
+        {loginError && <div className="msg">{loginError}</div>}
+        <button type="submit" style={{ marginTop: 10, padding: "8px 16px" }}>Sign in</button>
+      </form>
+    </main>);
   return (<>
     <header>
       <h1>Document Intelligence System</h1>
       {offline && <span className="badge failed">backend offline</span>}
+      {signedIn && <button style={{ marginLeft: "auto" }} onClick={() => { sessionStorage.removeItem(TOKEN_KEY); setNeedLogin(true); }}>Sign out</button>}
       {info && <span className={`banner ${demo ? "demo" : ""}`}>
         {demo ? "DEMO extractor (rule-based, not an AI model)" : `LLM: ${info.llm_model}`}</span>}
     </header>
