@@ -13,7 +13,7 @@
 **সার্ভার চালু করুন** (প্রতিটা আলাদা terminal-এ; বিস্তারিত `docs/running_locally.md`):
 ```bash
 # Postgres (বন্ধ থাকলে) — কমান্ড running_locally.md-এ
-cd "/Users/rafshedul/Desktop/Document Intelligence System/backend"
+cd backend            # প্রজেক্টের ফোল্ডার থেকে
 .venv/bin/uvicorn app.main:app --port 8000          # backend
 cd ../frontend && npm run dev                        # frontend
 ```
