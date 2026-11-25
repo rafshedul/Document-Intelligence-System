@@ -82,24 +82,38 @@ The server refuses to start without `API_AUTH_TOKEN` (16+ characters) unless `EN
 
 ### Without Docker (development)
 
-Needs Python 3.12+, Node 20+, PostgreSQL with the pgvector extension, Tesseract (add `ben` for Bengali), and
-Redis only if you use the Celery mode.
+Needs Python 3.12+, Node 20+, PostgreSQL with the pgvector extension, and Tesseract (add `ben` for Bengali).
+Redis is only needed for the Celery mode; the quick mode below does not use it.
 
 ```bash
-cp .env.example .env                       # then edit it; never commit .env
+# 1. a database with the pgvector extension (adjust user, host, port and name to yours)
+createdb docintel
+psql -d docintel -f infra/postgres/01-extensions.sql          # CREATE EXTENSION vector
+
+# 2. backend settings: backend/.env (git-ignored). Do NOT copy the root .env.example for this:
+#    its DATABASE_URL host is "postgres", the name only Docker knows, and it sets ENVIRONMENT=production.
+cat > backend/.env <<'EOF2'
+ENVIRONMENT=development                 # no token needed; for local use only
+LLM_PROVIDER=demo                       # regex stand-in, no API key. Use "anthropic" + LLM_API_KEY for real extraction
+TASK_BACKEND=inline                     # run jobs inside the API process: no Redis, no worker
+DATABASE_URL=postgresql://YOUR_USER@127.0.0.1:5432/docintel
+REDIS_URL=redis://localhost:6379/0      # only checked by /health in this mode
+UPLOAD_DIR=/tmp/docintel-uploads        # any folder you can write to
+EOF2
+
+# 3. install and migrate
 python3 -m venv backend/.venv && backend/.venv/bin/pip install -r backend/requirements.txt
-(cd frontend && npm install && cp .env.example .env.local)
-psql -d YOURDB -f infra/postgres/01-extensions.sql      # CREATE EXTENSION vector
+(cd frontend && npm install && cp -n .env.example .env.local)
 (cd backend && .venv/bin/alembic upgrade head)
 
-(cd backend && .venv/bin/uvicorn app.main:app --port 8000)    # API
-(cd frontend && npm run dev)                                  # UI on :3000
+# 4. run (two terminals)
+(cd backend && .venv/bin/uvicorn app.main:app --port 8000)    # API: http://localhost:8000/docs
+(cd frontend && npm run dev)                                  # UI:  http://localhost:3000
 ```
 
-Quick try with no API key and no Redis: in `backend/.env` set `ENVIRONMENT=development`, `LLM_PROVIDER=demo`,
-`TASK_BACKEND=inline`, then upload files from `sample_data/`. The `demo` extractor is a set of regular
-expressions that reads simple "Label: value" invoices, **not an AI model**; use `LLM_PROVIDER=anthropic` and
-`LLM_API_KEY` for real extraction. More in [docs/running_locally.md](docs/running_locally.md).
+Then upload files from `sample_data/` in the web page. The `demo` extractor reads simple "Label: value"
+invoices with regular expressions and is **not an AI model**. `/health` reports `degraded` without Redis; uploads
+still work in `inline` mode. The full Celery setup (Redis + worker) is in [docs/running_locally.md](docs/running_locally.md).
 
 ## Configuration (environment variables)
 
