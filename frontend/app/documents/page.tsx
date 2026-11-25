@@ -54,6 +54,12 @@ export default function DocumentsPage() {
     }
   }, [status, fileType, page]);
 
+  // links on the home page open this list already filtered: /documents?status=needs_review
+  useEffect(() => {
+    const s = new URLSearchParams(window.location.search).get("status");
+    if (s && DOC_STATUSES.includes(s as never)) setStatus(s);
+  }, []);
+
   useEffect(() => { void load(); }, [load]);
   const anyActive = !!data?.items.some((d) => isActive(d.status));
   useInterval(() => void load(true), anyActive ? POLL_MS : null);
@@ -105,7 +111,7 @@ export default function DocumentsPage() {
                 {data.items.map((d) => (
                   <tr key={d.id} className="align-top hover:bg-slate-50">
                     <td className="px-4 py-3">
-                      <Link href={`/documents/${d.id}`} className="font-medium text-blue-700 hover:underline">{d.filename}</Link>
+                      <Link href={`/documents/${d.id}`} className="font-medium text-brand-700 hover:underline">{d.filename}</Link>
                       <Live d={d} />
                     </td>
                     <td className="px-4 py-3 uppercase text-slate-600">{d.file_type}{d.page_count ? <span className="ml-1 normal-case text-slate-400">· {d.page_count} p</span> : null}</td>
@@ -121,7 +127,7 @@ export default function DocumentsPage() {
             {data.items.map((d) => (
               <li key={d.id} className="card">
                 <div className="flex items-start justify-between gap-2">
-                  <Link href={`/documents/${d.id}`} className="min-w-0 break-words font-medium text-blue-700">{d.filename}</Link>
+                  <Link href={`/documents/${d.id}`} className="min-w-0 break-words font-medium text-brand-700">{d.filename}</Link>
                   <StatusBadge status={d.status} />
                 </div>
                 <p className="mt-1 text-xs text-slate-500"><span className="uppercase">{d.file_type}</span> · {formatDateTime(d.created_at)}</p>

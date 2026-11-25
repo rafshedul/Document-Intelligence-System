@@ -41,7 +41,7 @@ export function FilePreview({ id, fileType, filename }: { id: string; fileType: 
     <div className="flex h-full flex-col">
       <div className="flex shrink-0 justify-end border-b border-slate-200 bg-slate-50 px-3 py-1 text-xs">
         {/* some phone browsers cannot show a PDF inside a page; a new tab always works */}
-        <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline">Open in a new tab ↗</a>
+        <a href={url} target="_blank" rel="noopener noreferrer" className="text-brand-700 hover:underline">Open in a new tab ↗</a>
       </div>
       {fileType === "pdf"
         ? <iframe src={url} title={`Preview of ${filename}`} className="min-h-[20rem] w-full flex-1 border-0 bg-white" />

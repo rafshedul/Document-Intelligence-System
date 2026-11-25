@@ -28,6 +28,7 @@ with sync_playwright() as p:
     # ---------- live polling in the list ----------
     page.goto(BASE + "/upload")
     page.set_input_files("[data-testid=file-input]", ["/tmp/docintel-e2e/slow2.pdf"])
+    page.get_by_role("button", name="Extract data").click()
     page.wait_for_selector("text=✓ Uploaded", timeout=15000)
     page.goto(BASE + "/documents"); page.wait_for_selector("table tbody tr")
     page.evaluate("window.__marker = 'no-reload'")

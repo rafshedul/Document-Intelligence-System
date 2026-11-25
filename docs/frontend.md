@@ -6,7 +6,8 @@ Next.js 14 (App Router), TypeScript, Tailwind CSS. Code: `frontend/`. No UI libr
 
 | Page | What it does |
 |---|---|
-| `/upload` | Drag and drop (or choose) many files at once. Type and size are checked in the browser before anything is sent; each file is uploaded on its own with its own progress bar (3 at a time), and shows Uploaded / Already uploaded (link to the existing document) / the reason it failed, with Retry for failures. |
+| `/` | Home: a headline, one big "Select invoice files" button and a grid of tool cards (extract, all documents, needs review, completed, failed, search) with filter tabs. The review/completed/failed cards show live counts from the API. Layout and feel are inspired by tool-picker sites such as ilovepdf.com; the logo, icons and wording are this project's own. |
+| `/upload` | A large "Select invoice files" button (or drop files). Choosing files only lists them as cards (type icon, size, remove); a big **Extract data** button on the right sends them. Type and size are checked in the browser before anything is sent; each file is uploaded on its own with its own progress bar (3 at a time), and shows Uploaded / Already uploaded (link to the existing document) / the reason it failed, with Retry for failures. |
 | `/documents` | List with name, type, status badge, date; filters by status and type; pagination. While any document is queued or processing, the list asks the server every 2 seconds and shows a live progress bar and stage, without reloading. Table on wide screens, cards on phones. |
 | `/documents/[id]` | Left: the original file (PDF or image; spreadsheets and TIFF offer a download). Right: extracted fields with the confidence next to each (yellow below 70%), the source text each value came from, and a line item table. Validation panel (errors red, warnings amber; each finding names its field and jumps to it). Edit mode, Reprocess, Delete, correction history. Progress while processing. |
 | `/search` | Search box, Hybrid / Keyword / Semantic toggle, filters for supplier, invoice date range and status. Results show the matched snippet with the words highlighted, page number, match type and score. The query and filters live in the URL, so refresh and the back button keep them. |
@@ -26,7 +27,7 @@ If the API wants a token (`ENVIRONMENT=production`), the app shows a sign-in box
 ## Structure
 
 ```
-app/            pages (layout, upload, documents, documents/[id], search)
+app/            pages (layout, home, upload, documents, documents/[id], search)
 components/     AuthGate, Nav, FilePreview, FieldsPanel, ValidationPanel, CorrectionHistory, Highlighted, ui (badges, progress, states)
 lib/api.ts      the typed API client: URLs, token, the uniform error format, upload with progress
 lib/types.ts    response types, mirroring the backend models

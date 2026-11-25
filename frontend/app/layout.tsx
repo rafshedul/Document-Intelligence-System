@@ -13,6 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthGate>
           <Nav />
           <main className="mx-auto max-w-7xl px-4 py-5">{children}</main>
+          <footer className="mx-auto max-w-7xl px-4 py-8 text-center text-xs text-slate-500">Prototype: not production-ready. Values come only from the document text; anything doubtful goes to review.</footer>
         </AuthGate>
       </body>
     </html>

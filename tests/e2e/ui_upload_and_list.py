@@ -32,11 +32,12 @@ with sync_playwright() as p:
 
     # ---------- upload page ----------
     page.goto(BASE + "/upload")
-    expect(page.get_by_role("heading", name="Upload documents")).to_be_visible()
+    expect(page.get_by_role("heading", name="Extract invoice data")).to_be_visible()
     check(page.get_by_text("Allowed:").is_visible(), "upload page shows allowed types and size limit")
     page.set_input_files("[data-testid=file-input]", [
         f"{SD}/digital_invoice.pdf", f"{SD}/scanned_invoice.jpg", f"{SD}/invoices.csv", f"{SD}/multi_sheet.xlsx",
         f"{SD}/corrupted.pdf", "/tmp/docintel-e2e/notes.docx", "/tmp/docintel-e2e/empty.csv"])
+    page.get_by_role("button", name="Extract data").click()  # choosing files only lists them; this sends them
     page.wait_for_function("document.body.innerText.split('✓ Uploaded').length - 1 >= 5", timeout=30000)  # all five, however fast
     n_up = page.get_by_text("✓ Uploaded").count()
     check(n_up == 5, f"5 valid files uploaded (got {n_up})")
@@ -46,6 +47,7 @@ with sync_playwright() as p:
 
     # duplicate
     page.set_input_files("[data-testid=file-input]", [f"{SD}/digital_invoice.pdf"])
+    page.get_by_role("button", name="Extract data").click()
     page.wait_for_selector("text=Already uploaded", timeout=10000)
     check(True, "uploading the same file again says 'Already uploaded'")
 
@@ -54,6 +56,7 @@ with sync_playwright() as p:
     cdp.send("Network.enable")
     cdp.send("Network.emulateNetworkConditions", {"offline": False, "latency": 20, "downloadThroughput": 1e7, "uploadThroughput": 600_000})
     page.set_input_files("[data-testid=file-input]", ["/tmp/docintel-e2e/big.csv"])
+    page.get_by_role("button", name="Extract data").click()
     seen = set()
     t0 = time.time()
     while time.time() - t0 < 25:

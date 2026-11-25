@@ -115,7 +115,7 @@ function SearchView() {
               {data.items.map((h) => (
                 <li key={h.document_id} className="card">
                   <div className="flex flex-wrap items-start justify-between gap-2">
-                    <Link href={`/documents/${h.document_id}`} className="min-w-0 break-all font-medium text-blue-700 hover:underline">{h.filename}</Link>
+                    <Link href={`/documents/${h.document_id}`} className="min-w-0 break-all font-medium text-brand-700 hover:underline">{h.filename}</Link>
                     <div className="flex flex-wrap items-center gap-1.5">
                       <StatusBadge status={h.status} />
                       {h.matched_by.map((m) => <Pill key={m} tone={m === "keyword" ? "blue" : "green"}>{m}</Pill>)}

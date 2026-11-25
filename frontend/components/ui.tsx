@@ -40,7 +40,7 @@ export function Spinner({ className = "h-4 w-4" }: { className?: string }) {
 
 export function ProgressBar({ value, label, tone = "blue" }: { value: number; label?: string; tone?: "blue" | "green" | "red" }) {
   const v = Math.max(0, Math.min(100, Math.round(value)));
-  const color = { blue: "bg-blue-600", green: "bg-green-600", red: "bg-red-500" }[tone];
+  const color = { blue: "bg-brand-600", green: "bg-green-600", red: "bg-red-500" }[tone];
   return (
     <div className="flex items-center gap-2" role="progressbar" aria-valuenow={v} aria-valuemin={0} aria-valuemax={100} aria-label={label ?? "Progress"}>
       <div className="h-2 min-w-[4rem] flex-1 overflow-hidden rounded-full bg-slate-200">
