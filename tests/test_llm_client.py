@@ -155,3 +155,32 @@ def test_unknown_provider():
             lc.get_llm_client()
     finally:
         settings.llm_provider = old
+
+
+def test_llm_timeouts_and_overload_are_retryable_not_fatal():
+    c, _ = adapter(anthropic.APITimeoutError(request=httpx.Request("POST", "https://x")))
+    with pytest.raises(LLMTransientError):
+        c.complete_json("s", [], {"type": "object"})
+    for status in (500, 502, 503, 529):  # 529 = overloaded
+        c, _ = adapter(http_error(anthropic.APIStatusError, status))
+        with pytest.raises(LLMTransientError):
+            c.complete_json("s", [], {"type": "object"})
+    for status in (400, 401, 403, 404):  # a retry will not fix these
+        c, _ = adapter(http_error(anthropic.APIStatusError, status))
+        with pytest.raises(LLMError) as e:
+            c.complete_json("s", [], {"type": "object"})
+        assert not isinstance(e.value, (LLMTransientError, LLMRateLimitError))
+
+
+def test_the_real_client_is_built_without_hidden_retries_or_network_calls(monkeypatch):
+    monkeypatch.setattr(settings, "llm_api_key", "sk-test-not-real")
+    monkeypatch.setattr(settings, "llm_request_timeout_seconds", 7.0)
+    c = AnthropicLLMClient()
+    assert c.model == settings.llm_model and c._client.max_retries == 0  # retrying is done once, by call_with_backoff
+    assert c._client.timeout == 7.0
+    assert AnthropicLLMClient(model="claude-sonnet-5-5").model == "claude-sonnet-5-5"
+    monkeypatch.setattr(settings, "llm_provider", "anthropic")
+    assert isinstance(lc.get_llm_client(), AnthropicLLMClient)
+    monkeypatch.setattr(settings, "llm_provider", "demo")
+    from app.services.demo_llm import DemoLLMClient
+    assert isinstance(lc.get_llm_client(), DemoLLMClient)

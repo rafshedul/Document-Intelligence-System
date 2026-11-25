@@ -86,7 +86,7 @@ def preprocess(gray: np.ndarray) -> np.ndarray:
 
 # ---- recognition -----------------------------------------------------------
 
-def ocr_array(gray: np.ndarray, do_preprocess: bool = True) -> OcrResult:
+def _ocr_once(gray: np.ndarray, do_preprocess: bool) -> OcrResult:
     if gray.size > settings.ocr_max_pixels:
         raise FileTooLargeError(f"Image is too large to OCR ({gray.shape[1]}x{gray.shape[0]} px).")
     img = preprocess(gray) if do_preprocess else gray
@@ -124,6 +124,43 @@ def ocr_array(gray: np.ndarray, do_preprocess: bool = True) -> OcrResult:
         confs.append(conf)
     text = "\n".join(" ".join(words) for words in lines.values())
     return OcrResult(text=text, confidence=round(sum(confs) / len(confs), 2) if confs else 0.0)
+
+
+ORIENTATION_CHECK_BELOW = 60.0  # only look for a rotated page when the first read is this unsure
+
+
+def detect_rotation(gray: np.ndarray) -> int:
+    """Degrees (0, 90, 180, 270) to rotate the page clockwise to make it upright, via Tesseract's
+    orientation detection. 0 when it cannot tell (too little text) or is not confident."""
+    h, w = gray.shape
+    scale = min(1.0, 1500 / max(h, w))
+    small = cv2.resize(gray, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA) if scale < 1 else gray
+    try:
+        osd = pytesseract.image_to_osd(Image.fromarray(small), config="--psm 0",
+                                       output_type=pytesseract.Output.DICT, timeout=settings.ocr_timeout_seconds)
+        if float(osd.get("orientation_conf", 0)) < 2.0:
+            return 0
+        return int(osd.get("rotate", 0)) % 360
+    except pytesseract.TesseractNotFoundError as exc:
+        raise OCRUnavailableError("Tesseract OCR is not installed on this server.") from exc
+    except Exception:  # "too few characters", missing osd data, crashes: just skip auto-rotation
+        return 0
+
+
+_ROTATE_FLAGS = {90: cv2.ROTATE_90_CLOCKWISE, 180: cv2.ROTATE_180, 270: cv2.ROTATE_90_COUNTERCLOCKWISE}
+
+
+def ocr_array(gray: np.ndarray, do_preprocess: bool = True, auto_rotate: bool = True) -> OcrResult:
+    """OCR one page. If the first read is unsure, check whether the page is upside down or sideways and,
+    if turning it gives a more confident read, use that (tilts up to ~15 degrees are handled by deskew)."""
+    result = _ocr_once(gray, do_preprocess)
+    if auto_rotate and result.confidence < ORIENTATION_CHECK_BELOW:
+        angle = detect_rotation(gray)
+        if angle in _ROTATE_FLAGS:
+            turned = _ocr_once(cv2.rotate(gray, _ROTATE_FLAGS[angle]), do_preprocess)
+            if turned.confidence > result.confidence:
+                return turned
+    return result
 
 
 # ---- image files (JPG / PNG / TIFF) ---------------------------------------

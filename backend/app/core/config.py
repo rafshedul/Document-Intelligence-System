@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     max_files_per_upload: int = 20
     upload_rate_limit_per_minute: int = 60  # files per client IP per minute
     task_max_retries: int = 3
+    # Redis hands a dead worker's job to another worker only after this long. Keep it above the slowest job.
+    celery_visibility_timeout_seconds: int = 4 * 3600
     task_retry_backoff_seconds: float = 5.0  # waits 5s, 10s, 20s (doubling)
     database_url: str
     redis_url: str

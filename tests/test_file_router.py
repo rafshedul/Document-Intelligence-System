@@ -87,3 +87,43 @@ def test_original_filename_overrides_stored_name(tmp_path):
     p = tmp_path / "3f9a1c"  # no extension on disk
     shutil.copy(sample("digital_invoice.pdf"), p)
     assert file_router.detect(str(p), "invoice.PDF").format == "pdf"
+
+
+# ---- broken files ----------------------------------------------------------------------------------------------------
+
+def test_truncated_excel_is_corrupted_not_a_crash(tmp_path):
+    data = open(sample("multi_sheet.xlsx"), "rb").read()
+    p = tmp_path / "cut.xlsx"
+    p.write_bytes(data[: len(data) // 2])
+    with pytest.raises(CorruptedFileError):
+        file_router.detect(str(p))
+
+
+def test_zip_that_is_not_a_workbook_is_unsupported(tmp_path):
+    import zipfile
+
+    p = tmp_path / "x.xlsx"
+    with zipfile.ZipFile(p, "w") as z:
+        z.writestr("hello.txt", "hi")
+    with pytest.raises(UnsupportedFormatError):
+        file_router.detect(str(p))
+
+
+def test_pdf_with_junk_before_the_header_is_still_a_pdf_but_far_junk_is_not(tmp_path):
+    body = open(sample("digital_invoice.pdf"), "rb").read()
+    near, far = tmp_path / "near.pdf", tmp_path / "far.pdf"
+    near.write_bytes(b"\r\n junk \r\n" + body)
+    far.write_bytes(b"x" * 2000 + body)
+    assert file_router.detect(str(near)).format == "pdf"
+    with pytest.raises((CorruptedFileError, ExtensionMismatchError)):
+        file_router.detect(str(far))  # no PDF header in the first KB: not accepted as a PDF
+
+
+@pytest.mark.parametrize("ext", [".pdf", ".jpg", ".jpeg", ".png", ".tif", ".tiff", ".xlsx", ".xls"])
+def test_random_bytes_are_never_accepted_for_any_supported_extension(tmp_path, ext):
+    import random
+
+    p = tmp_path / f"noise{ext}"
+    p.write_bytes(random.Random(7).randbytes(3000) + b"\x00")
+    with pytest.raises((CorruptedFileError, ExtensionMismatchError)):
+        file_router.detect(str(p))

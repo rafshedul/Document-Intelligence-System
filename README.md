@@ -51,7 +51,7 @@ Upload, list, status, result, manual correction, reprocess and delete: see [docs
 ```bash
 TEST_DATABASE_URL=postgresql+psycopg://USER@localhost:5432/DBNAME backend/.venv/bin/python -m pytest tests -q
 ```
-Without `TEST_DATABASE_URL`, tests that need a database are skipped. The LLM is always mocked; no test calls a real API. OCR tests are skipped if Tesseract is not installed.
+Add `--cov=app --cov-branch` for a coverage report. Results and known limits: [docs/test_results.md](docs/test_results.md). The suite empties the `documents` table of the database it runs against, so use a throw-away one. Without `TEST_DATABASE_URL`, tests that need a database are skipped. The LLM is always mocked; no test calls a real API. OCR tests are skipped if Tesseract is not installed.
 
 ## Security
 

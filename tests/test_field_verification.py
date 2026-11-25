@@ -97,3 +97,40 @@ def test_verify_decimal():
     assert verify_decimal("31.00", "Domain 2 x 15.50 = 31.00", TEXT) == (Decimal("31.00"), None)
     assert verify_decimal("99", "Domain 2 x 15.50 = 31.00", TEXT) == (None, "EXTRACT_VALUE_NOT_IN_SNIPPET")
     assert verify_decimal(None, "x", TEXT) == (None, None)
+
+
+# ---- dates must match what the snippet says -----------------------------------------------------------------------
+
+from app.services.field_verification import dates_in  # noqa: E402
+
+
+def test_dates_in_text():
+    assert dates_in("Date: 2026-11-24") == [date(2026, 11, 24)]
+    assert dates_in("24 Nov 2026, due 2nd December 2026") == [date(2026, 11, 24), date(2026, 12, 2)]
+    assert dates_in("November 24, 2026") == [date(2026, 11, 24)] and dates_in("Nov. 24 2026") == [date(2026, 11, 24)]
+    assert dates_in("24.11.2026") == [date(2026, 11, 24)] and dates_in("24/11/2026") == [date(2026, 11, 24)]
+    assert dates_in("03/04/2026") == [None] and dates_in("03/04/26") == [None]  # order or year unknowable
+    assert dates_in("no date here, only 12 items and 3.50") == []
+    assert dates_in("31 Feb 2026") == [None]  # not a real day
+
+
+@pytest.mark.parametrize("snippet,value,ok", [
+    ("Date: 2026-11-24", "2026-11-24", True),
+    ("Date: 24 Nov 2026", "2026-11-24", True),
+    ("Date: November 24, 2026", "2026-11-24", True),
+    ("Date: 24/11/2026", "2026-11-24", True),
+    ("Date: 11/24/2026", "2026-11-24", True),       # 24 cannot be a month
+    ("Date: 03/04/2026", "2026-03-04", False),      # guess: ambiguous
+    ("Date: 03/04/2026", "2026-04-03", False),      # the other guess: also rejected
+    ("Date: 03/04/26", "2026-04-03", False),
+    ("Date: 24 Nov 2026", "2026-11-25", False),     # wrong day
+    ("Date: 2026-11-24", "2026-11-04", False),
+    ("Issued 5th of May 2026", "2026-05-05", True),
+    ("Datum: 5. Mai", "2026-05-05", True),          # no recognisable full date to contradict: not second-guessed
+])
+def test_a_date_value_must_agree_with_the_dates_written_in_its_snippet(snippet, value, ok):
+    text = normalize(snippet + "\n")
+    v = verify_field("invoice_date", value, 0.9, snippet, text)
+    assert (v.value is not None) == ok
+    if not ok:
+        assert v.rejected_reason == "EXTRACT_DATE_NOT_IN_SNIPPET"

@@ -435,3 +435,88 @@ def test_docs_can_be_switched_off(engine, monkeypatch):
     monkeypatch.setattr(settings, "docs_enabled", False)
     c = TestClient(create_app())
     assert c.get("/docs").status_code == 404 and c.get("/openapi.json").status_code == 404
+
+
+# ---- wrong or missing credentials must leave no trace ---------------------------------------------------------------
+
+@pytest.fixture
+def secured(client, monkeypatch):
+    monkeypatch.setattr(settings, "environment", "production")
+    monkeypatch.setattr(settings, "api_auth_token", "s" * 32)
+    return TestClient(create_app())
+
+
+@pytest.mark.parametrize("headers", [{}, {"Authorization": "Bearer wrong"}, {"Authorization": "Basic " + "s" * 32}])
+def test_an_unauthorised_upload_stores_nothing(secured, sql, headers):
+    r = secured.post("/api/documents/upload", headers=headers, files=[("files", ("a.csv", csv_invoice("U-1")))])
+    err(r, 401, "unauthorized")
+    assert os.listdir(settings.upload_dir) == [] and sql.scalar(sa.select(sa.func.count()).select_from(Document)) == 0
+
+
+def test_an_unauthorised_delete_or_patch_changes_nothing(secured, client, sql):
+    good = {"Authorization": "Bearer " + "s" * 32}
+    i = secured.post("/api/documents/upload", headers=good, files=[("files", ("a.csv", csv_invoice("U-2")))]).json()["files"][0]["id"]
+    assert secured.delete(f"/api/documents/{i}").status_code == 401
+    assert secured.patch(f"/api/documents/{i}/result", json={"fields": {"tax": "1.00"}}).status_code == 401
+    assert secured.delete(f"/api/documents/{i}", headers={"Authorization": "Bearer nope"}).status_code == 401
+    assert secured.get(f"/api/documents/{i}/status", headers=good).status_code == 200  # still there
+    assert secured.delete(f"/api/documents/{i}", headers=good).status_code == 204
+
+
+# ---- remaining endpoint and failure paths ------------------------------------------------------------------------------
+
+def test_document_detail_for_the_web_page(client):
+    i = up_one(client, "a.pdf", open(sample("digital_invoice.pdf"), "rb").read())
+    d = client.get(f"/api/documents/{i}").json()
+    assert d["document"]["id"] == i and d["results"][0]["fields"]["invoice_number"]["value"] == "INV-2026-0042"
+    assert d["pages"][0]["page"] == 1 and "INVOICE" in d["pages"][0]["text"] and d["pages"][0]["method"] == "digital"
+    assert {"history", "findings"} <= set(d)
+    err(client.get("/api/documents/00000000-0000-0000-0000-000000000000"), 404, "not_found")
+    err(client.get("/api/documents/xyz"), 422, "validation_error")
+
+
+def test_page_text_in_the_detail_view_is_capped(client, sql):
+    i = up_one(client, "a.csv", csv_invoice("CAP-1"))
+    sql.execute(sa.update(DocumentPage).where(DocumentPage.document_id == i).values(extracted_text="x" * 50_000))
+    sql.commit()
+    assert len(client.get(f"/api/documents/{i}").json()["pages"][0]["text"]) == api.PAGE_TEXT_LIMIT
+
+
+def test_an_invalid_line_item_correction_is_rejected(client, sql):
+    i = up_one(client, "inv.csv", INVOICE.replace(b"{n}", b"C-3"))
+    e = err(patch(client, i, line_items=[{"position": 1, "quantity": "abc"}]), 422, "validation_error")
+    assert e["details"]["problems"][0]["field"] == "line_items.1.quantity"
+    err(patch(client, i, line_items=[{"position": 1, "unit_price": "1.234"}]), 422, "validation_error")  # 3 decimals
+    assert sql.scalar(sa.select(sa.func.count()).select_from(Correction)) == 0
+
+
+def test_an_unexpected_error_during_upload_returns_500_and_leaves_no_file(engine, monkeypatch):
+    from app.services import file_router
+
+    def boom(*a, **k):
+        raise OSError("disk exploded: /secret/path")
+
+    monkeypatch.setattr(file_router, "detect", boom)
+    c = TestClient(create_app(), raise_server_exceptions=False)
+    r = c.post("/api/documents/upload", files=[("files", ("a.csv", csv_invoice("X-9")))])
+    err(r, 500, "internal_error")
+    assert "disk exploded" not in r.text and "/secret" not in r.text
+    assert os.listdir(settings.upload_dir) == []  # the half-saved file was cleaned up
+
+
+def test_deleting_a_document_whose_file_is_already_gone_still_works(client, sql):
+    i = up_one(client, "a.csv", csv_invoice("GONE-1"))
+    os.remove(sql.scalar(sa.select(Document.stored_path).where(Document.id == i)))
+    assert client.delete(f"/api/documents/{i}").status_code == 204
+    err(client.get(f"/api/documents/{i}/status"), 404, "not_found")
+
+
+def test_the_server_refuses_to_start_in_production_without_a_token(monkeypatch):
+    monkeypatch.setattr(settings, "environment", "production")
+    monkeypatch.setattr(settings, "api_auth_token", "")
+    with pytest.raises(RuntimeError, match="API_AUTH_TOKEN"):
+        with TestClient(create_app()):  # entering the context runs the startup check
+            pass
+    monkeypatch.setattr(settings, "api_auth_token", "z" * 32)
+    with TestClient(create_app()) as c:
+        assert c.get("/health").status_code in (200, 503)

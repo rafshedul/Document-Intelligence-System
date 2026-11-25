@@ -207,9 +207,13 @@ def detect_encoding(sample: bytes) -> str:
         if exc.start >= len(sample) - 3:
             return "utf-8"
     guess = chardet.detect(sample)
-    enc = guess.get("encoding")
-    if not enc or (guess.get("confidence") or 0) < 0.3:
-        return "cp1252"  # most common legacy encoding for exported CSVs
+    enc, conf = guess.get("encoding"), guess.get("confidence") or 0.0
+    # chardet is unsure even when right (0.2-0.3 for Windows-1251 or CP932 files), so a low confidence alone is not
+    # a reason to discard it. It is when the file is almost all ASCII with a few odd bytes (e.g. one "€"): there
+    # chardet's guess is arbitrary and cp1252, the most common legacy export encoding, is the better bet.
+    high = sum(b > 127 for b in sample) / max(len(sample), 1)
+    if not enc or (conf < 0.5 and high < 0.05):
+        return "cp1252"
     return enc
 
 

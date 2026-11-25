@@ -21,3 +21,4 @@ opencv-python-headless>=4.10
 xlrd==2.0.2
 chardet>=5
 anthropic==2.13.0
+pytest-cov==7.1.0

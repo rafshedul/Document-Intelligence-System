@@ -171,3 +171,11 @@ def test_multiple_invoices_warning():
 def test_ocr_whitespace_differences_do_not_reject_a_correct_snippet():
     llm = MockLLM([response(invoice_number=field("INV-2026-0042", "invoice no:   INV-2026-0042"))])
     assert run(llm).fields["invoice_number"].value == "INV-2026-0042"
+
+
+def test_a_line_item_description_must_be_inside_its_snippet():
+    item = {"description": "Gold plated hosting", "quantity": "1", "unit_price": "240.00", "line_total": "240.00",
+            "confidence": 0.9, "source_snippet": "Web hosting      1 x 240.00 = 240.00"}
+    r = run(MockLLM([response(line_items=[item])]))
+    assert len(r.items) == 1 and r.items[0].description is None and r.items[0].line_total == Decimal("240.00")
+    assert "EXTRACT_VALUE_NOT_IN_SNIPPET" in {i.rule_code for i in r.issues}

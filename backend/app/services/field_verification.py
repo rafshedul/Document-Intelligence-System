@@ -101,6 +101,27 @@ def parse_date_strict(raw: str) -> date | None:
     return None
 
 
+_MONTHS = {m: i for i, names in enumerate(
+    ["jan january", "feb february", "mar march", "apr april", "may", "jun june", "jul july", "aug august",
+     "sep sept september", "oct october", "nov november", "dec december"], start=1) for m in names.split()}
+_NUMERIC_DATE = re.compile(r"(?<![\d.])(\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4})(?![\d])")
+_DAY_MONTH_YEAR = re.compile(r"\b(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?([A-Za-z]{3,9})\.?,?\s+(\d{4})\b")
+_MONTH_DAY_YEAR = re.compile(r"\b([A-Za-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})\b")
+
+
+def dates_in(text: str) -> list[date | None]:
+    """Every date written in `text`, as a date, or None where its day/month order or year cannot be known
+    (03/04/2026, 03/04/26). Formats it does not recognise are simply not listed."""
+    found: list[date | None] = [parse_date_strict(t) for t in _NUMERIC_DATE.findall(text)]
+    for d, mon, y in _DAY_MONTH_YEAR.findall(text):
+        if mon.lower() in _MONTHS:
+            found.append(_mk(int(y), _MONTHS[mon.lower()], int(d)))
+    for mon, d, y in _MONTH_DAY_YEAR.findall(text):
+        if mon.lower() in _MONTHS:
+            found.append(_mk(int(y), _MONTHS[mon.lower()], int(d)))
+    return found
+
+
 def _mk(y: int, m: int, d: int) -> date | None:
     try:
         return date(y, m, d)
@@ -137,6 +158,9 @@ def verify_field(name: str, value: str | None, confidence: float, snippet: str |
         typed = parse_date_strict(value)
         if typed is None or typed.isoformat() != value:
             return _reject("EXTRACT_INVALID_DATE")
+        written = dates_in(snippet)
+        if written and typed not in written:  # the text has a date, and it is not (or not provably) this one
+            return _reject("EXTRACT_DATE_NOT_IN_SNIPPET")
     elif name in MONEY_FIELDS:
         try:
             typed = Decimal(value)
