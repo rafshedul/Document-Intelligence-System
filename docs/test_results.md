@@ -2,7 +2,7 @@
 
 Run on 2026-11-25, macOS, Python 3.14, PostgreSQL 18 + pgvector 0.8.7, Tesseract 5.5.4 (English + OSD), Redis 8.
 
-**Backend: 508 tests, 508 passed, 0 failed, 0 skipped.** Coverage **97.2%** (2,601 of 2,650 statements; 685 of 730 branches). Run time about 15 s, 40 s with coverage.
+**Backend: 536 tests, 536 passed, 0 failed, 0 skipped** (508 product tests plus 28 for the evaluation scoring in `test_evaluation_metrics.py`, added later; the coverage figure below is from the 508). Coverage **97.2%** (2,601 of 2,650 statements; 685 of 730 branches). Run time about 15 s, 40 s with coverage.
 **Frontend: 65 unit tests passed**, plus type check, lint and production build clean, plus 3 browser test scripts (see the last section).
 
 ```bash
