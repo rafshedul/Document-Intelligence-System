@@ -1,0 +1,332 @@
+{
+  "format_version": 1,
+  "description": "SAMPLE synthetic set made by evaluation/make_sample_dataset.py. Replace with your own.",
+  "documents": {
+    "corrupt.pdf": {
+      "invoices": [],
+      "expected_validation": [],
+      "expected_failure": true,
+      "notes": "Broken PDF structure: the right outcome is status 'failed'."
+    },
+    "inv_clean_01.pdf": {
+      "invoices": [
+        {
+          "invoice_number": "INV-2026-0042",
+          "invoice_date": "2026-11-24",
+          "supplier_name": "Acme Hosting Ltd",
+          "customer_name": "Rahim Traders",
+          "subtotal": "721.00",
+          "tax": "36.05",
+          "total": "757.05",
+          "currency": "USD",
+          "line_items": [
+            {
+              "description": "Web hosting (12 months)",
+              "quantity": "1",
+              "unit_price": "240.00",
+              "line_total": "240.00"
+            },
+            {
+              "description": "Domain renewal",
+              "quantity": "2",
+              "unit_price": "15.50",
+              "line_total": "31.00"
+            },
+            {
+              "description": "Support hours",
+              "quantity": "10",
+              "unit_price": "45.00",
+              "line_total": "450.00"
+            }
+          ]
+        }
+      ],
+      "expected_validation": [],
+      "expected_failure": false,
+      "notes": "Digital PDF, every field present, 3 line items."
+    },
+    "inv_clean_02.pdf": {
+      "invoices": [
+        {
+          "invoice_number": "B-7781",
+          "invoice_date": "2026-10-02",
+          "supplier_name": "Dhaka Office Supplies",
+          "customer_name": "Karim Stores",
+          "subtotal": "161.00",
+          "tax": "8.05",
+          "total": "169.05",
+          "currency": "USD",
+          "line_items": [
+            {
+              "description": "A4 paper (ream)",
+              "quantity": "20",
+              "unit_price": "6.25",
+              "line_total": "125.00"
+            },
+            {
+              "description": "Stapler",
+              "quantity": "3",
+              "unit_price": "12.00",
+              "line_total": "36.00"
+            }
+          ]
+        }
+      ],
+      "expected_validation": [],
+      "expected_failure": false,
+      "notes": "Digital PDF, 2 line items."
+    },
+    "inv_clean_03.pdf": {
+      "invoices": [
+        {
+          "invoice_number": "C-0099",
+          "invoice_date": "2026-09-15",
+          "supplier_name": "Padma Logistics",
+          "customer_name": "Meghna Foods",
+          "subtotal": "1240.00",
+          "tax": "62.00",
+          "total": "1302.00",
+          "currency": "USD",
+          "line_items": [
+            {
+              "description": "Freight Dhaka-Khulna",
+              "quantity": "4",
+              "unit_price": "310.00",
+              "line_total": "1240.00"
+            }
+          ]
+        }
+      ],
+      "expected_validation": [],
+      "expected_failure": false,
+      "notes": "Digital PDF, 1 line item."
+    },
+    "inv_no_date_no_customer.pdf": {
+      "invoices": [
+        {
+          "invoice_number": "N-5520",
+          "invoice_date": null,
+          "supplier_name": "Chattogram Hardware",
+          "customer_name": null,
+          "subtotal": "19.00",
+          "tax": "0.95",
+          "total": "19.95",
+          "currency": "USD",
+          "line_items": [
+            {
+              "description": "Hammer",
+              "quantity": "2",
+              "unit_price": "9.50",
+              "line_total": "19.00"
+            }
+          ]
+        }
+      ],
+      "expected_validation": [],
+      "expected_failure": false,
+      "notes": "Date and customer are not printed anywhere. Truth is null for both."
+    },
+    "inv_wrong_total.pdf": {
+      "invoices": [
+        {
+          "invoice_number": "W-1001",
+          "invoice_date": "2026-08-01",
+          "supplier_name": "Sylhet Tea Traders",
+          "customer_name": "Rahim Traders",
+          "subtotal": "100.00",
+          "tax": "5.00",
+          "total": "150.00",
+          "currency": "USD",
+          "line_items": [
+            {
+              "description": "Tea chest",
+              "quantity": "5",
+              "unit_price": "20.00",
+              "line_total": "100.00"
+            }
+          ]
+        }
+      ],
+      "expected_validation": [
+        "TOTAL_MISMATCH"
+      ],
+      "expected_failure": false,
+      "notes": "Total printed as 150.00; subtotal + tax is 105.00. The truth is what is printed."
+    },
+    "inv_zz_duplicate_of_01.pdf": {
+      "invoices": [
+        {
+          "invoice_number": "INV-2026-0042",
+          "invoice_date": "2026-11-20",
+          "supplier_name": "Acme Hosting Ltd",
+          "customer_name": "Rahim Traders",
+          "subtotal": "721.00",
+          "tax": "36.05",
+          "total": "757.05",
+          "currency": "USD",
+          "line_items": [
+            {
+              "description": "Web hosting (12 months)",
+              "quantity": "1",
+              "unit_price": "240.00",
+              "line_total": "240.00"
+            },
+            {
+              "description": "Domain renewal",
+              "quantity": "2",
+              "unit_price": "15.50",
+              "line_total": "31.00"
+            },
+            {
+              "description": "Support hours",
+              "quantity": "10",
+              "unit_price": "45.00",
+              "line_total": "450.00"
+            }
+          ]
+        }
+      ],
+      "expected_validation": [
+        "DUPLICATE_INVOICE"
+      ],
+      "expected_failure": false,
+      "notes": "Same invoice number and supplier as inv_clean_01.pdf; processed later (sorted by name)."
+    },
+    "scan_image_only.pdf": {
+      "invoices": [
+        {
+          "invoice_number": "S-2202",
+          "invoice_date": "2026-07-21",
+          "supplier_name": "Barishal Boats Ltd",
+          "customer_name": "Meghna Foods",
+          "subtotal": "140.00",
+          "tax": "7.00",
+          "total": "147.00",
+          "currency": "USD",
+          "line_items": [
+            {
+              "description": "Anchor",
+              "quantity": "1",
+              "unit_price": "140.00",
+              "line_total": "140.00"
+            }
+          ]
+        }
+      ],
+      "expected_validation": [],
+      "expected_failure": false,
+      "notes": "PDF holding only an image: needs OCR."
+    },
+    "scan_photo.jpg": {
+      "invoices": [
+        {
+          "invoice_number": "S-2201",
+          "invoice_date": "2026-07-20",
+          "supplier_name": "Barishal Boats Ltd",
+          "customer_name": "Rahim Traders",
+          "subtotal": "158.00",
+          "tax": "7.90",
+          "total": "165.90",
+          "currency": "USD",
+          "line_items": [
+            {
+              "description": "Life jacket",
+              "quantity": "6",
+              "unit_price": "18.00",
+              "line_total": "108.00"
+            },
+            {
+              "description": "Rope (50m)",
+              "quantity": "2",
+              "unit_price": "25.00",
+              "line_total": "50.00"
+            }
+          ]
+        }
+      ],
+      "expected_validation": [],
+      "expected_failure": false,
+      "notes": "JPEG, 1.5 degree tilt and noise: needs OCR."
+    },
+    "sheet_german_semicolon.csv": {
+      "invoices": [
+        {
+          "invoice_number": "R-001",
+          "invoice_date": "2026-03-01",
+          "supplier_name": "Müller & Söhne GmbH",
+          "customer_name": null,
+          "subtotal": null,
+          "tax": null,
+          "total": "100.50",
+          "currency": null,
+          "line_items": []
+        },
+        {
+          "invoice_number": "R-002",
+          "invoice_date": "2026-03-02",
+          "supplier_name": "Müller & Söhne GmbH",
+          "customer_name": null,
+          "subtotal": null,
+          "tax": null,
+          "total": "2301.50",
+          "currency": null,
+          "line_items": []
+        },
+        {
+          "invoice_number": "R-003",
+          "invoice_date": "2026-03-03",
+          "supplier_name": "Müller & Söhne GmbH",
+          "customer_name": null,
+          "subtotal": null,
+          "tax": null,
+          "total": "3998.00",
+          "currency": null,
+          "line_items": []
+        },
+        {
+          "invoice_number": "R-004",
+          "invoice_date": "2026-03-04",
+          "supplier_name": "Müller & Söhne GmbH",
+          "customer_name": null,
+          "subtotal": null,
+          "tax": null,
+          "total": "45.25",
+          "currency": null,
+          "line_items": []
+        }
+      ],
+      "expected_validation": [],
+      "expected_failure": false,
+      "notes": "German headers, semicolons, decimal comma, Windows-1252 encoding."
+    },
+    "sheet_two_invoices.xlsx": {
+      "invoices": [
+        {
+          "invoice_number": "INV-101",
+          "invoice_date": "2026-01-05",
+          "supplier_name": "Acme Hosting Ltd",
+          "customer_name": null,
+          "subtotal": null,
+          "tax": null,
+          "total": "1250.50",
+          "currency": null,
+          "line_items": []
+        },
+        {
+          "invoice_number": "INV-102",
+          "invoice_date": "2026-02-11",
+          "supplier_name": "Acme Hosting Ltd",
+          "customer_name": null,
+          "subtotal": null,
+          "tax": null,
+          "total": "310.00",
+          "currency": null,
+          "line_items": []
+        }
+      ],
+      "expected_validation": [],
+      "expected_failure": false,
+      "notes": "Header row Invoice/Date/Supplier/Total; only those four fields can be known. Plus an empty sheet."
+    }
+  }
+}

@@ -1,0 +1,929 @@
+{
+  "meta": {
+    "started": "2026-11-25 06:34 UTC",
+    "commit": "19e30e6 (+ uncommitted changes)",
+    "documents": 11,
+    "dataset": "evaluation/labeled_dataset",
+    "llm_provider": "demo",
+    "llm_model": "demo-rules (regex stand-in)",
+    "ocr_languages": "eng",
+    "embedding_provider": "hash",
+    "wall_seconds": 1.9684089580041473,
+    "synthetic": true
+  },
+  "results": {
+    "outcome": {
+      "documents": 11,
+      "status_counts": {
+        "failed": 1,
+        "completed": 7,
+        "needs_review": 3
+      },
+      "expected_to_succeed": 10,
+      "success": {
+        "count": 10,
+        "of": 10,
+        "rate": 1.0
+      },
+      "failure": {
+        "count": 0,
+        "of": 10,
+        "rate": 0.0,
+        "files": []
+      },
+      "expected_failures_handled": {
+        "count": 1,
+        "of": 1
+      },
+      "needs_review": {
+        "count": 3,
+        "of": 10
+      },
+      "expected_failures_not_failed": []
+    },
+    "extraction": {
+      "fields": {
+        "invoice_number": {
+          "correct": 14,
+          "correct_null": 0,
+          "missed": 0,
+          "hallucinated": 0,
+          "wrong": 0,
+          "labelled_with_value": 14,
+          "accuracy": 1.0
+        },
+        "invoice_date": {
+          "correct": 13,
+          "correct_null": 1,
+          "missed": 0,
+          "hallucinated": 0,
+          "wrong": 0,
+          "labelled_with_value": 13,
+          "accuracy": 1.0
+        },
+        "supplier_name": {
+          "correct": 14,
+          "correct_null": 0,
+          "missed": 0,
+          "hallucinated": 0,
+          "wrong": 0,
+          "labelled_with_value": 14,
+          "accuracy": 1.0
+        },
+        "customer_name": {
+          "correct": 7,
+          "correct_null": 7,
+          "missed": 0,
+          "hallucinated": 0,
+          "wrong": 0,
+          "labelled_with_value": 7,
+          "accuracy": 1.0
+        },
+        "subtotal": {
+          "correct": 8,
+          "correct_null": 6,
+          "missed": 0,
+          "hallucinated": 0,
+          "wrong": 0,
+          "labelled_with_value": 8,
+          "accuracy": 1.0
+        },
+        "tax": {
+          "correct": 8,
+          "correct_null": 6,
+          "missed": 0,
+          "hallucinated": 0,
+          "wrong": 0,
+          "labelled_with_value": 8,
+          "accuracy": 1.0
+        },
+        "total": {
+          "correct": 14,
+          "correct_null": 0,
+          "missed": 0,
+          "hallucinated": 0,
+          "wrong": 0,
+          "labelled_with_value": 14,
+          "accuracy": 1.0
+        },
+        "currency": {
+          "correct": 8,
+          "correct_null": 6,
+          "missed": 0,
+          "hallucinated": 0,
+          "wrong": 0,
+          "labelled_with_value": 8,
+          "accuracy": 1.0
+        }
+      },
+      "invoice_accuracy": {
+        "correct": 14,
+        "total": 14,
+        "rate": 1.0
+      },
+      "invoice_accuracy_with_line_items": {
+        "correct": 14,
+        "total": 14,
+        "rate": 1.0
+      },
+      "invoices": {
+        "labelled": 14,
+        "extracted": 14,
+        "matched": 14
+      },
+      "line_items": {
+        "labelled": 14,
+        "extracted": 14,
+        "matched": 14,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "null_rate": {
+        "missed": 0,
+        "of_labelled_values": 86,
+        "rate": 0.0,
+        "null_outputs": 26,
+        "of_all_fields": 112,
+        "overall_null_share": 0.23214285714285715
+      },
+      "hallucination": {
+        "invented": 0,
+        "of_labelled_null_fields": 26,
+        "rate": 0.0
+      },
+      "wrong_value_rate": {
+        "wrong_or_invented": 0,
+        "of_values_output": 86,
+        "rate": 0.0
+      },
+      "documents_scored": 10
+    },
+    "timing": {
+      "csv": {
+        "documents": 1,
+        "mean_s": 0.08758920899708755,
+        "max_s": 0.08758920899708755,
+        "slowest": "sheet_german_semicolon.csv",
+        "mean_stage_s": {
+          "embed": 0.002,
+          "extract_fields": 0.0,
+          "extract_text": 0.059,
+          "save_results": 0.002,
+          "segment": 0.0,
+          "validate": 0.008,
+          "validate_file": 0.0
+        }
+      },
+      "jpeg (OCR)": {
+        "documents": 1,
+        "mean_s": 0.45699841599707725,
+        "max_s": 0.45699841599707725,
+        "slowest": "scan_photo.jpg",
+        "mean_stage_s": {
+          "embed": 0.002,
+          "extract_fields": 0.001,
+          "extract_text": 0.428,
+          "save_results": 0.002,
+          "segment": 0.0,
+          "validate": 0.005,
+          "validate_file": 0.0
+        }
+      },
+      "pdf": {
+        "documents": 6,
+        "mean_s": 0.02604816666765449,
+        "max_s": 0.032707500002288725,
+        "slowest": "inv_clean_01.pdf",
+        "mean_stage_s": {
+          "embed": 0.0011666666666666668,
+          "extract_fields": 0.0008333333333333334,
+          "extract_text": 0.004333333333333333,
+          "save_results": 0.0011666666666666668,
+          "segment": 0.0,
+          "validate": 0.0036666666666666666,
+          "validate_file": 0.0
+        }
+      },
+      "pdf (OCR)": {
+        "documents": 1,
+        "mean_s": 0.9443388330037124,
+        "max_s": 0.9443388330037124,
+        "slowest": "scan_image_only.pdf",
+        "mean_stage_s": {
+          "embed": 0.002,
+          "extract_fields": 0.001,
+          "extract_text": 0.919,
+          "save_results": 0.001,
+          "segment": 0.0,
+          "validate": 0.005,
+          "validate_file": 0.0
+        }
+      },
+      "xlsx": {
+        "documents": 1,
+        "mean_s": 0.02887666699825786,
+        "max_s": 0.02887666699825786,
+        "slowest": "sheet_two_invoices.xlsx",
+        "mean_stage_s": {
+          "embed": 0.001,
+          "extract_fields": 0.0,
+          "extract_text": 0.004,
+          "save_results": 0.002,
+          "segment": 0.0,
+          "validate": 0.006,
+          "validate_file": 0.0
+        }
+      }
+    },
+    "timing_all": {
+      "documents": 10,
+      "mean_s": 0.16740921250020618,
+      "max_s": 0.9443388330037124
+    },
+    "validation": {
+      "precision": {
+        "value": 1.0,
+        "tp": 8,
+        "reported": 8
+      },
+      "recall": {
+        "value": 1.0,
+        "tp": 8,
+        "expected": 8
+      },
+      "planted_errors_caught": {
+        "found": 2,
+        "of": 2,
+        "rate": 1.0
+      },
+      "clean_documents_with_false_alarms": {
+        "count": 0,
+        "of": 5,
+        "rate": 0.0
+      },
+      "documents_with_differences": {},
+      "ignored_rules": [
+        "LOW_CONFIDENCE"
+      ]
+    },
+    "per_document": {
+      "inv_clean_01.pdf": {
+        "fields_correct": 8,
+        "fields_total": 8,
+        "differences": []
+      },
+      "inv_clean_02.pdf": {
+        "fields_correct": 8,
+        "fields_total": 8,
+        "differences": []
+      },
+      "inv_clean_03.pdf": {
+        "fields_correct": 8,
+        "fields_total": 8,
+        "differences": []
+      },
+      "inv_no_date_no_customer.pdf": {
+        "fields_correct": 8,
+        "fields_total": 8,
+        "differences": []
+      },
+      "inv_wrong_total.pdf": {
+        "fields_correct": 8,
+        "fields_total": 8,
+        "differences": []
+      },
+      "inv_zz_duplicate_of_01.pdf": {
+        "fields_correct": 8,
+        "fields_total": 8,
+        "differences": []
+      },
+      "scan_image_only.pdf": {
+        "fields_correct": 8,
+        "fields_total": 8,
+        "differences": []
+      },
+      "scan_photo.jpg": {
+        "fields_correct": 8,
+        "fields_total": 8,
+        "differences": []
+      },
+      "sheet_german_semicolon.csv": {
+        "fields_correct": 32,
+        "fields_total": 32,
+        "differences": []
+      },
+      "sheet_two_invoices.xlsx": {
+        "fields_correct": 16,
+        "fields_total": 16,
+        "differences": []
+      }
+    }
+  },
+  "documents": [
+    {
+      "file": "corrupt.pdf",
+      "expected_failure": true,
+      "file_type": "pdf",
+      "kind": "pdf",
+      "status": "failed",
+      "error_message": "The PDF has no pages.",
+      "rejected_at_upload": false,
+      "seconds": 0.2502760409988696,
+      "page_count": null,
+      "ocr_confidence_mean": null,
+      "stage_ms": {
+        "extract_text": 243,
+        "validate_file": 0
+      },
+      "invoices": [],
+      "findings": []
+    },
+    {
+      "file": "inv_clean_01.pdf",
+      "expected_failure": false,
+      "file_type": "pdf",
+      "kind": "pdf",
+      "status": "completed",
+      "error_message": null,
+      "rejected_at_upload": false,
+      "seconds": 0.032707500002288725,
+      "page_count": 1,
+      "ocr_confidence_mean": null,
+      "stage_ms": {
+        "validate_file": 0,
+        "extract_text": 5,
+        "segment": 0,
+        "extract_fields": 1,
+        "save_results": 2,
+        "validate": 6,
+        "embed": 2
+      },
+      "invoices": [
+        {
+          "invoice_number": "INV-2026-0042",
+          "invoice_date": "2026-11-24",
+          "supplier_name": "Acme Hosting Ltd",
+          "customer_name": "Rahim Traders",
+          "subtotal": "721.00",
+          "tax": "36.05",
+          "total": "757.05",
+          "currency": "USD",
+          "line_items": [
+            {
+              "description": "Web hosting (12 months)",
+              "quantity": "1.000",
+              "unit_price": "240.00",
+              "line_total": "240.00"
+            },
+            {
+              "description": "Domain renewal",
+              "quantity": "2.000",
+              "unit_price": "15.50",
+              "line_total": "31.00"
+            },
+            {
+              "description": "Support hours",
+              "quantity": "10.000",
+              "unit_price": "45.00",
+              "line_total": "450.00"
+            }
+          ]
+        }
+      ],
+      "findings": []
+    },
+    {
+      "file": "inv_clean_02.pdf",
+      "expected_failure": false,
+      "file_type": "pdf",
+      "kind": "pdf",
+      "status": "completed",
+      "error_message": null,
+      "rejected_at_upload": false,
+      "seconds": 0.02494683300028555,
+      "page_count": 1,
+      "ocr_confidence_mean": null,
+      "stage_ms": {
+        "validate_file": 0,
+        "extract_text": 5,
+        "segment": 0,
+        "extract_fields": 1,
+        "save_results": 1,
+        "validate": 3,
+        "embed": 1
+      },
+      "invoices": [
+        {
+          "invoice_number": "B-7781",
+          "invoice_date": "2026-10-02",
+          "supplier_name": "Dhaka Office Supplies",
+          "customer_name": "Karim Stores",
+          "subtotal": "161.00",
+          "tax": "8.05",
+          "total": "169.05",
+          "currency": "USD",
+          "line_items": [
+            {
+              "description": "A4 paper (ream)",
+              "quantity": "20.000",
+              "unit_price": "6.25",
+              "line_total": "125.00"
+            },
+            {
+              "description": "Stapler",
+              "quantity": "3.000",
+              "unit_price": "12.00",
+              "line_total": "36.00"
+            }
+          ]
+        }
+      ],
+      "findings": []
+    },
+    {
+      "file": "inv_clean_03.pdf",
+      "expected_failure": false,
+      "file_type": "pdf",
+      "kind": "pdf",
+      "status": "completed",
+      "error_message": null,
+      "rejected_at_upload": false,
+      "seconds": 0.024133584003720898,
+      "page_count": 1,
+      "ocr_confidence_mean": null,
+      "stage_ms": {
+        "validate_file": 0,
+        "extract_text": 4,
+        "segment": 0,
+        "extract_fields": 1,
+        "save_results": 1,
+        "validate": 3,
+        "embed": 1
+      },
+      "invoices": [
+        {
+          "invoice_number": "C-0099",
+          "invoice_date": "2026-09-15",
+          "supplier_name": "Padma Logistics",
+          "customer_name": "Meghna Foods",
+          "subtotal": "1240.00",
+          "tax": "62.00",
+          "total": "1302.00",
+          "currency": "USD",
+          "line_items": [
+            {
+              "description": "Freight Dhaka-Khulna",
+              "quantity": "4.000",
+              "unit_price": "310.00",
+              "line_total": "1240.00"
+            }
+          ]
+        }
+      ],
+      "findings": []
+    },
+    {
+      "file": "inv_no_date_no_customer.pdf",
+      "expected_failure": false,
+      "file_type": "pdf",
+      "kind": "pdf",
+      "status": "needs_review",
+      "error_message": "1 validation error(s) and 1 warning(s) need review.",
+      "rejected_at_upload": false,
+      "seconds": 0.025475832997472025,
+      "page_count": 1,
+      "ocr_confidence_mean": null,
+      "stage_ms": {
+        "validate_file": 0,
+        "extract_text": 4,
+        "segment": 0,
+        "extract_fields": 0,
+        "save_results": 1,
+        "validate": 4,
+        "embed": 1
+      },
+      "invoices": [
+        {
+          "invoice_number": "N-5520",
+          "invoice_date": null,
+          "supplier_name": "Chattogram Hardware",
+          "customer_name": null,
+          "subtotal": "19.00",
+          "tax": "0.95",
+          "total": "19.95",
+          "currency": "USD",
+          "line_items": [
+            {
+              "description": "Hammer",
+              "quantity": "2.000",
+              "unit_price": "9.50",
+              "line_total": "19.00"
+            }
+          ]
+        }
+      ],
+      "findings": [
+        {
+          "code": "MISSING_FIELD",
+          "severity": "error",
+          "field": "invoice_date",
+          "scored": true
+        },
+        {
+          "code": "MISSING_FIELD",
+          "severity": "warning",
+          "field": "customer_name",
+          "scored": true
+        }
+      ]
+    },
+    {
+      "file": "inv_wrong_total.pdf",
+      "expected_failure": false,
+      "file_type": "pdf",
+      "kind": "pdf",
+      "status": "needs_review",
+      "error_message": "1 validation error(s) and 0 warning(s) need review.",
+      "rejected_at_upload": false,
+      "seconds": 0.025692750001326203,
+      "page_count": 1,
+      "ocr_confidence_mean": null,
+      "stage_ms": {
+        "validate_file": 0,
+        "extract_text": 4,
+        "segment": 0,
+        "extract_fields": 2,
+        "save_results": 1,
+        "validate": 3,
+        "embed": 1
+      },
+      "invoices": [
+        {
+          "invoice_number": "W-1001",
+          "invoice_date": "2026-08-01",
+          "supplier_name": "Sylhet Tea Traders",
+          "customer_name": "Rahim Traders",
+          "subtotal": "100.00",
+          "tax": "5.00",
+          "total": "150.00",
+          "currency": "USD",
+          "line_items": [
+            {
+              "description": "Tea chest",
+              "quantity": "5.000",
+              "unit_price": "20.00",
+              "line_total": "100.00"
+            }
+          ]
+        }
+      ],
+      "findings": [
+        {
+          "code": "TOTAL_MISMATCH",
+          "severity": "error",
+          "field": "total",
+          "scored": true
+        }
+      ]
+    },
+    {
+      "file": "inv_zz_duplicate_of_01.pdf",
+      "expected_failure": false,
+      "file_type": "pdf",
+      "kind": "pdf",
+      "status": "needs_review",
+      "error_message": "1 validation error(s) and 0 warning(s) need review.",
+      "rejected_at_upload": false,
+      "seconds": 0.023332500000833534,
+      "page_count": 1,
+      "ocr_confidence_mean": null,
+      "stage_ms": {
+        "validate_file": 0,
+        "extract_text": 4,
+        "segment": 0,
+        "extract_fields": 0,
+        "save_results": 1,
+        "validate": 3,
+        "embed": 1
+      },
+      "invoices": [
+        {
+          "invoice_number": "INV-2026-0042",
+          "invoice_date": "2026-11-20",
+          "supplier_name": "Acme Hosting Ltd",
+          "customer_name": "Rahim Traders",
+          "subtotal": "721.00",
+          "tax": "36.05",
+          "total": "757.05",
+          "currency": "USD",
+          "line_items": [
+            {
+              "description": "Web hosting (12 months)",
+              "quantity": "1.000",
+              "unit_price": "240.00",
+              "line_total": "240.00"
+            },
+            {
+              "description": "Domain renewal",
+              "quantity": "2.000",
+              "unit_price": "15.50",
+              "line_total": "31.00"
+            },
+            {
+              "description": "Support hours",
+              "quantity": "10.000",
+              "unit_price": "45.00",
+              "line_total": "450.00"
+            }
+          ]
+        }
+      ],
+      "findings": [
+        {
+          "code": "DUPLICATE_INVOICE",
+          "severity": "error",
+          "field": "invoice_number",
+          "scored": true
+        }
+      ]
+    },
+    {
+      "file": "scan_image_only.pdf",
+      "expected_failure": false,
+      "file_type": "pdf",
+      "kind": "pdf (OCR)",
+      "status": "completed",
+      "error_message": null,
+      "rejected_at_upload": false,
+      "seconds": 0.9443388330037124,
+      "page_count": 1,
+      "ocr_confidence_mean": 94.8,
+      "stage_ms": {
+        "validate_file": 0,
+        "extract_text": 919,
+        "segment": 0,
+        "extract_fields": 1,
+        "save_results": 1,
+        "validate": 5,
+        "embed": 2
+      },
+      "invoices": [
+        {
+          "invoice_number": "S-2202",
+          "invoice_date": "2026-07-21",
+          "supplier_name": "Barishal Boats Ltd",
+          "customer_name": "Meghna Foods",
+          "subtotal": "140.00",
+          "tax": "7.00",
+          "total": "147.00",
+          "currency": "USD",
+          "line_items": [
+            {
+              "description": "Anchor",
+              "quantity": "1.000",
+              "unit_price": "140.00",
+              "line_total": "140.00"
+            }
+          ]
+        }
+      ],
+      "findings": []
+    },
+    {
+      "file": "scan_photo.jpg",
+      "expected_failure": false,
+      "file_type": "jpeg",
+      "kind": "jpeg (OCR)",
+      "status": "completed",
+      "error_message": null,
+      "rejected_at_upload": false,
+      "seconds": 0.45699841599707725,
+      "page_count": 1,
+      "ocr_confidence_mean": 94.1,
+      "stage_ms": {
+        "validate_file": 0,
+        "extract_text": 428,
+        "segment": 0,
+        "extract_fields": 1,
+        "save_results": 2,
+        "validate": 5,
+        "embed": 2
+      },
+      "invoices": [
+        {
+          "invoice_number": "S-2201",
+          "invoice_date": "2026-07-20",
+          "supplier_name": "Barishal Boats Ltd",
+          "customer_name": "Rahim Traders",
+          "subtotal": "158.00",
+          "tax": "7.90",
+          "total": "165.90",
+          "currency": "USD",
+          "line_items": [
+            {
+              "description": "Life jacket",
+              "quantity": "6.000",
+              "unit_price": "18.00",
+              "line_total": "108.00"
+            },
+            {
+              "description": "Rope (50m)",
+              "quantity": "2.000",
+              "unit_price": "25.00",
+              "line_total": "50.00"
+            }
+          ]
+        }
+      ],
+      "findings": []
+    },
+    {
+      "file": "sheet_german_semicolon.csv",
+      "expected_failure": false,
+      "file_type": "csv",
+      "kind": "csv",
+      "status": "completed",
+      "error_message": null,
+      "rejected_at_upload": false,
+      "seconds": 0.08758920899708755,
+      "page_count": 1,
+      "ocr_confidence_mean": null,
+      "stage_ms": {
+        "validate_file": 0,
+        "extract_text": 59,
+        "segment": 0,
+        "extract_fields": 0,
+        "save_results": 2,
+        "validate": 8,
+        "embed": 2
+      },
+      "invoices": [
+        {
+          "invoice_number": "R-001",
+          "invoice_date": "2026-03-01",
+          "supplier_name": "Müller & Söhne GmbH",
+          "customer_name": null,
+          "subtotal": null,
+          "tax": null,
+          "total": "100.50",
+          "currency": null,
+          "line_items": []
+        },
+        {
+          "invoice_number": "R-002",
+          "invoice_date": "2026-03-02",
+          "supplier_name": "Müller & Söhne GmbH",
+          "customer_name": null,
+          "subtotal": null,
+          "tax": null,
+          "total": "2301.50",
+          "currency": null,
+          "line_items": []
+        },
+        {
+          "invoice_number": "R-003",
+          "invoice_date": "2026-03-03",
+          "supplier_name": "Müller & Söhne GmbH",
+          "customer_name": null,
+          "subtotal": null,
+          "tax": null,
+          "total": "3998.00",
+          "currency": null,
+          "line_items": []
+        },
+        {
+          "invoice_number": "R-004",
+          "invoice_date": "2026-03-04",
+          "supplier_name": "Müller & Söhne GmbH",
+          "customer_name": null,
+          "subtotal": null,
+          "tax": null,
+          "total": "45.25",
+          "currency": null,
+          "line_items": []
+        }
+      ],
+      "findings": [
+        {
+          "code": "MISSING_FIELD",
+          "severity": "warning",
+          "field": "customer_name",
+          "scored": true
+        },
+        {
+          "code": "MISSING_FIELD",
+          "severity": "warning",
+          "field": "currency",
+          "scored": true
+        },
+        {
+          "code": "MISSING_FIELD",
+          "severity": "warning",
+          "field": "customer_name",
+          "scored": true
+        },
+        {
+          "code": "MISSING_FIELD",
+          "severity": "warning",
+          "field": "currency",
+          "scored": true
+        },
+        {
+          "code": "MISSING_FIELD",
+          "severity": "warning",
+          "field": "customer_name",
+          "scored": true
+        },
+        {
+          "code": "MISSING_FIELD",
+          "severity": "warning",
+          "field": "currency",
+          "scored": true
+        },
+        {
+          "code": "MISSING_FIELD",
+          "severity": "warning",
+          "field": "customer_name",
+          "scored": true
+        },
+        {
+          "code": "MISSING_FIELD",
+          "severity": "warning",
+          "field": "currency",
+          "scored": true
+        }
+      ]
+    },
+    {
+      "file": "sheet_two_invoices.xlsx",
+      "expected_failure": false,
+      "file_type": "xlsx",
+      "kind": "xlsx",
+      "status": "completed",
+      "error_message": null,
+      "rejected_at_upload": false,
+      "seconds": 0.02887666699825786,
+      "page_count": 1,
+      "ocr_confidence_mean": null,
+      "stage_ms": {
+        "validate_file": 0,
+        "extract_text": 4,
+        "segment": 0,
+        "extract_fields": 0,
+        "save_results": 2,
+        "validate": 6,
+        "embed": 1
+      },
+      "invoices": [
+        {
+          "invoice_number": "INV-101",
+          "invoice_date": "2026-01-05",
+          "supplier_name": "Acme Hosting Ltd",
+          "customer_name": null,
+          "subtotal": null,
+          "tax": null,
+          "total": "1250.50",
+          "currency": null,
+          "line_items": []
+        },
+        {
+          "invoice_number": "INV-102",
+          "invoice_date": "2026-02-11",
+          "supplier_name": "Acme Hosting Ltd",
+          "customer_name": null,
+          "subtotal": null,
+          "tax": null,
+          "total": "310.00",
+          "currency": null,
+          "line_items": []
+        }
+      ],
+      "findings": [
+        {
+          "code": "MISSING_FIELD",
+          "severity": "warning",
+          "field": "customer_name",
+          "scored": true
+        },
+        {
+          "code": "MISSING_FIELD",
+          "severity": "warning",
+          "field": "currency",
+          "scored": true
+        },
+        {
+          "code": "MISSING_FIELD",
+          "severity": "warning",
+          "field": "customer_name",
+          "scored": true
+        },
+        {
+          "code": "MISSING_FIELD",
+          "severity": "warning",
+          "field": "currency",
+          "scored": true
+        }
+      ]
+    }
+  ]
+}
