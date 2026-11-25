@@ -18,8 +18,8 @@ export DATABASE_URL=postgresql://docintel@127.0.0.1:5544/docintel REDIS_URL=redi
 export ENVIRONMENT=development LLM_PROVIDER=demo UPLOAD_DIR=/tmp/docintel-uploads   # demo = rule-based extractor, no API key; development = no login
 .venv/bin/uvicorn app.main:app --reload --port 8000
 
-# Terminal 2: frontend (http://localhost:3000)
-cd frontend && npm run dev
+# Terminal 2: frontend (http://localhost:3000); the API address is NEXT_PUBLIC_API_URL in frontend/.env.local
+cd frontend && cp -n .env.example .env.local && npm run dev
 
 # Tests
 TEST_DATABASE_URL=postgresql+psycopg://docintel@127.0.0.1:5544/docintel backend/.venv/bin/python -m pytest tests -q

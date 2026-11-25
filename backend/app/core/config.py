@@ -35,8 +35,10 @@ class Settings(BaseSettings):
     ocr_timeout_seconds: int = 120  # per page
     ocr_max_pixels: int = 40_000_000  # cap on rendered/processed image size
     pdf_min_text_chars: int = 50  # pages with less text are treated as scanned
-    pdf_batch_size: int = 25  # pages processed (and committed) per batch
-    image_batch_size: int = 10  # TIFF frames per batch
+    # Pages are saved, and the progress bar moves, once per batch. Small, so a slow OCR scan shows progress every
+    # few seconds; 1000 pages is 200 small commits, which is cheap.
+    pdf_batch_size: int = 5
+    image_batch_size: int = 3  # TIFF frames per batch (each frame is OCR'd)
     spreadsheet_rows_per_page: int = 1000  # rows per document_pages row
 
     # LLM extraction

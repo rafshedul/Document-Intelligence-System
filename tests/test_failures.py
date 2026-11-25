@@ -144,7 +144,7 @@ def test_worker_killed_while_reading_pages_then_job_redelivered(env, monkeypatch
     with pytest.raises(WorkerKilled):
         tasks.process_document_task.apply(args=args)
     doc_id = args[0]
-    assert counts(engine, doc_id)["pages"] == 25  # the first batch was saved before the "crash"
+    assert counts(engine, doc_id)["pages"] == 30  # the batches before the crashing page (6 x 5 pages) were saved
     assert status(engine, doc_id) == DocumentStatus.processing  # left mid-way, as after a real kill
 
     monkeypatch.setattr(pdf_processor, "_extract_page", real)  # a healthy worker picks the job up again

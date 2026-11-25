@@ -29,7 +29,7 @@ Needs Python 3.12+, Node 20+, PostgreSQL with the pgvector extension, Tesseract,
 ```bash
 cp .env.example .env            # then edit it; never commit .env
 python3 -m venv backend/.venv && backend/.venv/bin/pip install -r backend/requirements.txt
-(cd frontend && npm install)
+(cd frontend && npm install && cp .env.example .env.local)
 (cd backend && .venv/bin/alembic upgrade head)
 
 # backend (http://localhost:8000)
@@ -42,6 +42,10 @@ Quick try without an API key or Redis: set `ENVIRONMENT=development`, `LLM_PROVI
 
 With Docker: `docker compose up --build` (set `API_AUTH_TOKEN` in `.env` first: `openssl rand -hex 32`).
 
+## Web interface
+
+Upload, documents list with live progress, document detail (original file beside the extracted fields, confidence, validation, editing, correction history, reprocess) and search: see [docs/frontend.md](docs/frontend.md).
+
 ## API
 
 Upload, list, status, result, manual correction, reprocess and delete: see [docs/api.md](docs/api.md) or open `/docs` (Swagger UI) on the running backend. Background work runs in Celery with retries and per-stage progress.
@@ -51,7 +55,7 @@ Upload, list, status, result, manual correction, reprocess and delete: see [docs
 ```bash
 TEST_DATABASE_URL=postgresql+psycopg://USER@localhost:5432/DBNAME backend/.venv/bin/python -m pytest tests -q
 ```
-Add `--cov=app --cov-branch` for a coverage report. Results and known limits: [docs/test_results.md](docs/test_results.md). The suite empties the `documents` table of the database it runs against, so use a throw-away one. Without `TEST_DATABASE_URL`, tests that need a database are skipped. The LLM is always mocked; no test calls a real API. OCR tests are skipped if Tesseract is not installed.
+Frontend: `cd frontend && npm run typecheck && npm run lint && npm test`. Browser tests: `tests/e2e/`. Add `--cov=app --cov-branch` for a coverage report. Results and known limits: [docs/test_results.md](docs/test_results.md). The suite empties the `documents` table of the database it runs against, so use a throw-away one. Without `TEST_DATABASE_URL`, tests that need a database are skipped. The LLM is always mocked; no test calls a real API. OCR tests are skipped if Tesseract is not installed.
 
 ## Security
 

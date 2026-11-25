@@ -2,7 +2,8 @@
 
 Run on 2026-11-25, macOS, Python 3.14, PostgreSQL 18 + pgvector 0.8.7, Tesseract 5.5.4 (English + OSD), Redis 8.
 
-**500 tests: 500 passed, 0 failed, 0 skipped.** Coverage **97.2%** (2,584 of 2,633 statements; 683 of 728 branches). Run time about 12 s, 49 s with coverage.
+**Backend: 508 tests, 508 passed, 0 failed, 0 skipped.** Coverage **97.2%** (2,601 of 2,650 statements; 685 of 730 branches). Run time about 15 s, 40 s with coverage.
+**Frontend: 65 unit tests passed**, plus type check, lint and production build clean, plus 3 browser test scripts (see the last section).
 
 ```bash
 TEST_DATABASE_URL=postgresql+psycopg://USER@HOST/DB backend/.venv/bin/python -m pytest tests -q \
@@ -86,3 +87,28 @@ Real Redis and a real Celery worker, a 30-page scanned PDF, `kill -9` on the wor
 | services/spreadsheet_processor.py | 176 | 91.0% | 62, 66, 119, 150-154, 184-191, 208, 237-238 (rare error branches) |
 | prompts/__init__.py | 12 | 85.7% | 19 (malformed prompt file) |
 | **Total** | **2,633** | **97.2%** | |
+
+
+## Frontend (added later)
+
+| What | Result |
+|---|---|
+| `npm run typecheck`, `npm run lint`, `npm run build` | clean |
+| `npm test` (vitest, `frontend/lib/*.test.ts`) | **65 passed**: API client (error format, token, 401 handling, network errors, blob download, upload progress through a fake XMLHttpRequest), edit diff and client-side validation (same rules as the server), file checks and the upload pool, confidence threshold, highlight splitting (never loses text, ignores bad ranges), finding-to-row mapping |
+| Browser scripts in `tests/e2e/` (headless Chromium, real backend) | `ui_upload_and_list.py` 11/11; `ui_detail_edit_search.py` 32/32; `ui_login_mobile_errors.py` 19/19 |
+
+The browser scripts cover: client-side refusal of a `.docx` and an empty file; per-file upload progress (observed moving 0 to 23 percent over a throttled connection); duplicate upload; list filters and empty state; live progress in the list without a page reload (5, 12, 20, 27...); detail page values, confidence and line items; edit with a bad amount refused before saving, then saved, validation re-run (`TOTAL_MISMATCH` appears, status becomes needs review, the total row is marked, the correction history lists old value, new value and who), then fixed back; Reprocess on a failed document; image preview, spreadsheet download; search in three modes with highlights, filters and URL state surviving a refresh; sign-in with a wrong and a right token, sign-out, and a token that stops working mid-session; 390 px wide screens (no sideways scrolling on any page, original file can be hidden, tapping a value opens the editor); unknown and malformed document ids; the backend going away.
+
+### Found while building and testing the interface (fixed)
+
+- A scanned PDF's progress sat at 5% for about 20 seconds because progress was recorded once per 25-page batch; batches are now 5 pages (images 3), so it moves every few seconds.
+- The documents API had no endpoint for the original file or the correction log; added `GET /api/documents/{id}/file` and `/corrections` (with tests; the file is served with a no-script Content-Security-Policy and a type taken from the detected format).
+- `next` 14.2.18 had a published security advisory; updated to 14.2.35.
+- Docker: the frontend image now takes the API address as a build argument, because Next.js fixes it into the page at build time.
+
+### Not covered
+
+- No pixel-level checks of the PDF preview (headless Chromium has no PDF viewer; the script checks that the frame is loaded from an authorised blob). TIFF is not previewed.
+- Only Chromium was tried (no Firefox or Safari), and no real phone.
+- Keyboard use and screen readers were considered (labels, roles, focus) but not audited.
+- The sign-in test needs a second, protected stack; it is documented in `tests/e2e/README.md` and not run automatically.

@@ -144,6 +144,17 @@ class LineItemEdit(BaseModel):
     line_total: str | None = None
 
 
+class CorrectionOut(BaseModel):
+    id: str
+    invoice_index: int
+    version: int
+    field: str
+    old_value: str | None
+    new_value: str | None
+    corrected_by: str | None
+    corrected_at: str
+
+
 class CorrectionRequest(BaseModel):
     """Only the fields you send are changed. Send `null` or `""` to clear a value."""
     model_config = ConfigDict(extra="forbid")

@@ -15,8 +15,15 @@ __pycache__/
 # node
 node_modules/
 .next/
+.next-*/
 next-env.d.ts
 *.tsbuildinfo
+
+# test output
+.coverage
+.coverage.*
+coverage.json
+htmlcov/
 
 # runtime data
 uploads/

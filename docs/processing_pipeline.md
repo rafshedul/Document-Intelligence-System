@@ -20,7 +20,7 @@ flowchart TD
 | Module | Does |
 |---|---|
 | `file_router` | Checks size (0 bytes, `MAX_FILE_SIZE_MB`), the extension, and the real format from magic bytes. A PNG named `.jpg` is reported, not accepted. The user's original filename decides the extension, so stored files can have generated names. |
-| `pdf_processor` | PyMuPDF, one page at a time, yielded in batches (`PDF_BATCH_SIZE`, default 25). Pages with under `PDF_MIN_TEXT_CHARS` (50) characters are rendered at `OCR_DPI` and OCR'd; the longer of OCR/embedded text wins. A 1000-page PDF is read without holding it in memory. |
+| `pdf_processor` | PyMuPDF, one page at a time, yielded in batches (`PDF_BATCH_SIZE`, default 5, so progress moves every few pages even for slow OCR scans). Pages with under `PDF_MIN_TEXT_CHARS` (50) characters are rendered at `OCR_DPI` and OCR'd; the longer of OCR/embedded text wins. A 1000-page PDF is read without holding it in memory. |
 | `ocr_processor` | Tesseract. Preprocessing: grayscale, upscale tiny images, denoise, deskew (±10°), CLAHE contrast. Saves mean word confidence (0-100) per page; blank page = 0.0. Multi-page TIFF: one page per frame. Handles EXIF rotation, transparency, 16-bit/CMYK/palette images. |
 | `spreadsheet_processor` | XLSX (openpyxl), XLS (xlrd), CSV (chardet for encoding, csv.Sniffer for the delimiter). Each sheet is read separately; empty sheets are skipped and listed in the log; merged cells are filled with the merged value. Sheets are split into pages of `SPREADSHEET_ROWS_PER_PAGE` (1000) rows, as tab-separated text starting with `# Sheet: <name> (rows a-b)`. |
 | `pipeline` | Runs the stages, writes `document_pages`, commits per batch, logs each stage. Re-running a document replaces its pages. |
@@ -51,7 +51,7 @@ On success the document stays `processing` (later stages, LLM extraction and val
 
 ## Settings (env vars)
 
-`OCR_LANGUAGES` (`eng`; Docker: `eng+ben`), `OCR_DPI` (300), `OCR_TIMEOUT_SECONDS` (120 per page), `OCR_MAX_PIXELS` (40M), `PDF_MIN_TEXT_CHARS` (50), `PDF_BATCH_SIZE` (25), `IMAGE_BATCH_SIZE` (10), `SPREADSHEET_ROWS_PER_PAGE` (1000).
+`OCR_LANGUAGES` (`eng`; Docker: `eng+ben`), `OCR_DPI` (300), `OCR_TIMEOUT_SECONDS` (120 per page), `OCR_MAX_PIXELS` (40M), `PDF_MIN_TEXT_CHARS` (50), `PDF_BATCH_SIZE` (5), `IMAGE_BATCH_SIZE` (3), `SPREADSHEET_ROWS_PER_PAGE` (1000).
 
 ## Known limits
 

@@ -520,3 +520,52 @@ def test_the_server_refuses_to_start_in_production_without_a_token(monkeypatch):
     monkeypatch.setattr(settings, "api_auth_token", "z" * 32)
     with TestClient(create_app()) as c:
         assert c.get("/health").status_code in (200, 503)
+
+
+# ---- original file (preview) and correction log --------------------------------------------------------------------------
+
+@pytest.mark.parametrize("name,expected,inline", [
+    ("digital_invoice.pdf", "application/pdf", True), ("scanned_invoice.jpg", "image/jpeg", True)])
+def test_the_original_file_is_served_for_preview(client, name, expected, inline):
+    data = open(sample(name), "rb").read()
+    i = up_one(client, name, data)
+    r = client.get(f"/api/documents/{i}/file")
+    assert r.status_code == 200 and r.content == data and r.headers["content-type"] == expected
+    assert r.headers["content-disposition"].startswith("inline; filename*=UTF-8''" + name)
+    assert "sandbox" in r.headers["content-security-policy"] and "script" not in r.headers["content-security-policy"]
+    assert r.headers["cache-control"] == "no-store" and r.headers["x-content-type-options"] == "nosniff"
+
+
+def test_non_previewable_files_are_downloads_and_download_can_be_forced(client):
+    i = up_one(client, "inv.csv", csv_invoice("F-1"))
+    r = client.get(f"/api/documents/{i}/file")
+    assert r.headers["content-type"].startswith("text/csv") and r.headers["content-disposition"].startswith("attachment")
+    j = up_one(client, "x.pdf", open(sample("digital_invoice.pdf"), "rb").read())
+    assert client.get(f"/api/documents/{j}/file", params={"download": "true"}).headers["content-disposition"].startswith("attachment")
+
+
+def test_the_served_type_comes_from_the_detected_format_not_the_filename(client, sql):
+    i = up_one(client, "a.pdf", open(sample("digital_invoice.pdf"), "rb").read())
+    sql.execute(sa.update(Document).where(Document.id == i).values(original_filename="evil<script>.html"))
+    sql.commit()
+    r = client.get(f"/api/documents/{i}/file")
+    assert r.headers["content-type"] == "application/pdf" and "<script>" not in r.headers["content-disposition"]  # percent-encoded
+
+
+def test_file_endpoint_errors(client, sql):
+    err(client.get("/api/documents/00000000-0000-0000-0000-000000000000/file"), 404, "not_found")
+    i = up_one(client, "a.csv", csv_invoice("F-2"))
+    os.remove(sql.scalar(sa.select(Document.stored_path).where(Document.id == i)))
+    e = err(client.get(f"/api/documents/{i}/file"), 404, "not_found")
+    assert "missing" in e["message"] and "/tmp" not in e["message"]
+
+
+def test_correction_log_lists_every_change_newest_first(client):
+    i = up_one(client, "inv.csv", INVOICE.replace(b"{n}", b"H-1"))
+    assert client.get(f"/api/documents/{i}/corrections").json() == []
+    patch(client, i, fields={"customer_name": "Carol"}, corrected_by="alice")
+    patch(client, i, fields={"total": "30.00"}, corrected_by="bob")
+    log = client.get(f"/api/documents/{i}/corrections").json()
+    assert [(c["field"], c["new_value"], c["corrected_by"]) for c in log] == [("total", "30.00", "bob"), ("customer_name", "Carol", "alice")]
+    assert log[0]["old_value"] == "26.25" and log[0]["invoice_index"] == 0 and log[0]["version"] == 1 and log[0]["corrected_at"]
+    err(client.get("/api/documents/00000000-0000-0000-0000-000000000000/corrections"), 404, "not_found")

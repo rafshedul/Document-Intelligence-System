@@ -26,6 +26,7 @@ cd ../frontend && npm run dev                        # frontend
 ---
 
 ## ১. ফাইল আপলোড ও প্রসেসিং ✅
+(ওয়েবে: **Upload** পেজ → ফাইল টেনে ফেলুন; তারপর **Documents** পেজে progress দেখুন)
 `sample_data/` থেকে **এই ক্রমে** আপলোড করুন (একসাথে বেছে নিলেও হয়):
 
 | ফাইল | প্রত্যাশিত ফল |
@@ -38,7 +39,9 @@ cd ../frontend && npm run dev                        # frontend
 | `corrupted.pdf` | **failed**, পরিষ্কার বাংলা/ইংরেজি বার্তা, কোনো crash নয় |
 
 - [ ] উপরের প্রতিটার ফল মিলেছে
-- [ ] একসাথে ৪-৫টা ফাইল বেছে দিলে প্রতিটার পাশে progress bar দেখা যায়
+- [ ] একসাথে ৪-৫টা ফাইল বেছে দিলে প্রতিটার পাশে আপলোড progress bar দেখা যায় (বড় ফাইলে স্পষ্ট)
+- [ ] Documents তালিকায় processing-চলা document-এর progress bar নিজে নিজে বাড়ে, পেজ রিফ্রেশ ছাড়াই (প্রতি ২ সেকেন্ডে)
+- [ ] তালিকায় status ও type দিয়ে filter, খালি filter-এ "No documents match" বার্তা
 - [ ] একই ফাইল আবার দিলে "already uploaded" বার্তা আসে, নতুন document হয় না
 - [ ] `.docx` বা `.txt` দিলে "not supported" বার্তা
 - [ ] `.pdf` নাম দিয়ে আসলে `.png` ছবি আপলোড (নাম বদলে) → ধরা পড়ে (extension mismatch)
@@ -93,8 +96,11 @@ cd ../frontend && npm run dev                        # frontend
 - [ ] ঝাপসা স্ক্যান → `LOW_CONFIDENCE` (warning)
 - [ ] শুধু warning থাকলে status **completed** + "flagged" ব্যাজ
 
-## ৬. সংশোধন, Reprocess, Delete ✅
-- [ ] যেকোনো field-এর পাশে `edit` → নতুন মান → সাথে সাথে validation আবার চলে, ✎ চিহ্ন আসে
+## ৬. Document-এর পাতা: preview, সংশোধন, Reprocess, Delete ✅
+- [ ] বাঁয়ে মূল ফাইল (PDF/ছবি) দেখা যায়, ডানে fields; ৭০%-এর নিচে confidence হলুদ ⚠ দিয়ে দেখায়
+- [ ] Validation panel-এ error লাল, warning হলুদ; field-এর নামে ক্লিক করলে সেই সারিতে নিয়ে যায়
+- [ ] ফোনের মতো ছোট পর্দায় (ব্রাউজার সংকুচিত করে) কোনো পাশে-স্ক্রল ছাড়া পড়া যায়
+- [ ] যেকোনো field-এর **মানে ক্লিক** (বা Edit values) → নতুন মান → Save → সাথে সাথে validation আবার চলে, ✎ চিহ্ন আসে
 - [ ] ভুল মান (`abc` টাকার ঘরে, `2026-13-45` তারিখে) → বার্তা দেখায়, কিছু বদলায় না
 - [ ] `psql` দিয়ে `select * from corrections;` → পুরনো মান, নতুন মান, কখন সংরক্ষিত
 - [ ] failed/needs_review document-এ **Reprocess** → আবার প্রসেস হয়; হাতে-সংশোধন করা হলে সতর্কবার্তা আসে

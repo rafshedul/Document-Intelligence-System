@@ -5,9 +5,11 @@ import math
 import os
 import uuid
 from datetime import date, datetime
+from urllib.parse import quote
 from decimal import Decimal, InvalidOperation
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, Request, Response, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -20,7 +22,7 @@ from app.models import (
     Correction, Document, DocumentPage, DocumentStatus, ExtractedResult, ProcessingHistory, ValidationError as VErr,
 )
 from app.schemas.documents import (
-    EDITABLE_FIELDS, CorrectionRequest, DocumentList, ErrorResponse, ReprocessResponse, ResultResponse,
+    EDITABLE_FIELDS, CorrectionOut, CorrectionRequest, DocumentList, ErrorResponse, ReprocessResponse, ResultResponse,
     StatusResponse, UploadResponse,
 )
 from app.services import file_router, validation_service
@@ -242,6 +244,44 @@ def get_document(document_id: uuid.UUID, session: Session = Depends(get_session)
     out["pages"] = [{"page": p.page_number, "method": p.extraction_method.value, "ocr_confidence": _dec(p.ocr_confidence),
                      "text": (p.extracted_text or "")[:PAGE_TEXT_LIMIT]} for p in pages]
     return out
+
+
+# ---- the original file, and the correction log ---------------------------------------------------------------
+
+MEDIA_TYPES = {"pdf": "application/pdf", "jpeg": "image/jpeg", "png": "image/png", "tiff": "image/tiff",
+               "csv": "text/csv", "xls": "application/vnd.ms-excel",
+               "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}
+BROWSER_PREVIEW = {"pdf", "jpeg", "png"}  # what a browser can show; everything else is offered as a download
+
+
+@router.get("/documents/{document_id}/file", summary="The original uploaded file",
+            description="For the preview next to the extracted data. The type comes from what the file was detected "
+                        "as at upload, never from the file's own claims, and the response carries a CSP that forbids "
+                        "scripts, so an uploaded file cannot run anything. Only PDF and JPG/PNG are shown inline.",
+            response_class=FileResponse, responses={404: {"model": ErrorResponse}})
+def get_file(document_id: uuid.UUID, download: bool = False, session: Session = Depends(get_session)):
+    d = _doc_or_404(session, document_id)
+    if not os.path.isfile(d.stored_path):
+        raise HTTPException(404, "The stored file is missing.")
+    inline = d.file_type in BROWSER_PREVIEW and not download
+    return FileResponse(
+        d.stored_path, media_type=MEDIA_TYPES.get(d.file_type, "application/octet-stream"),
+        headers={"Content-Disposition": f"{'inline' if inline else 'attachment'}; filename*=UTF-8''{quote(d.original_filename)}",
+                 "Content-Security-Policy": "default-src 'none'; sandbox", "Cache-Control": "private, no-store"})
+
+
+@router.get("/documents/{document_id}/corrections", response_model=list[CorrectionOut],
+            summary="Who changed what: the manual correction log, newest first")
+def get_corrections(document_id: uuid.UUID, session: Session = Depends(get_session)):
+    _doc_or_404(session, document_id)
+    rows = session.execute(
+        select(Correction, ExtractedResult.invoice_index, ExtractedResult.version)
+        .join(ExtractedResult, ExtractedResult.id == Correction.result_id)
+        .where(ExtractedResult.document_id == document_id)
+        .order_by(Correction.corrected_at.desc(), Correction.id)).all()
+    return [{"id": str(c.id), "invoice_index": idx, "version": ver, "field": c.field, "old_value": c.old_value,
+             "new_value": c.new_value, "corrected_by": c.corrected_by, "corrected_at": c.corrected_at.isoformat()}
+            for c, idx, ver in rows]
 
 
 # ---- 5. manual correction ----------------------------------------------------------------------
