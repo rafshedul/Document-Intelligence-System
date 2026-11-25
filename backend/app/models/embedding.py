@@ -27,5 +27,6 @@ class Embedding(UUIDPrimaryKey, Base):
         UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE")
     )
     chunk_index: Mapped[int] = mapped_column(Integer)
+    page_number: Mapped[int | None] = mapped_column(Integer)  # the page this chunk came from
     chunk_text: Mapped[str] = mapped_column(Text)
     embedding = mapped_column(Vector(settings.embedding_dimension), nullable=False)

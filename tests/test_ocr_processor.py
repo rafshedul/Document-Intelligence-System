@@ -5,7 +5,7 @@ from conftest import collect, needs_tesseract, sample
 from PIL import Image
 
 from app.services import ocr_processor
-from app.services.exceptions import CorruptedFileError, OCRUnavailableError
+from app.services.exceptions import CorruptedFileError, OCRError, OCRUnavailableError
 
 
 def gray_sample() -> np.ndarray:
@@ -78,3 +78,13 @@ def test_missing_tesseract_gives_clear_error(monkeypatch):
     monkeypatch.setattr(pytesseract, "image_to_data", boom)
     with pytest.raises(OCRUnavailableError):
         ocr_processor.ocr_array(gray_sample())
+
+
+def test_tesseract_crash_with_binary_error_output_is_a_clear_error(monkeypatch):
+    def boom(*a, **k):  # what pytesseract does when tesseract fails and its stderr is not valid UTF-8
+        raise UnicodeDecodeError("utf-8", b"\x89PNG", 0, 1, "invalid start byte")
+
+    monkeypatch.setattr(pytesseract, "image_to_data", boom)
+    with pytest.raises(OCRError) as e:
+        ocr_processor.ocr_array(gray_sample())
+    assert "utf-8" not in e.value.message and "Tesseract" in e.value.message

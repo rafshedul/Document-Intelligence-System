@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import documents, health
+from app.api import documents, health, search
 from app.core import errors, security
 from app.core.config import settings
 
@@ -46,6 +46,7 @@ def create_app() -> FastAPI:
     errors.register(app)  # registered last so the request id wraps everything
     app.include_router(health.router)
     app.include_router(documents.router)
+    app.include_router(search.router)
     return app
 
 

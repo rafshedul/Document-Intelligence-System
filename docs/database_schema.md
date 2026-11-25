@@ -36,6 +36,7 @@ erDiagram
         text extracted_text
         varchar extraction_method "digital|ocr|spreadsheet"
         numeric ocr_confidence
+        tsvector tsv "generated, GIN index: keyword search"
     }
     extracted_results {
         uuid id PK
@@ -99,6 +100,7 @@ erDiagram
         uuid id PK
         uuid document_id FK
         int chunk_index
+        int page_number
         text chunk_text
         vector embedding "dimension = EMBEDDING_DIMENSION"
     }
@@ -142,6 +144,8 @@ Append-only log of each pipeline stage attempt (`parse`, `ocr`, `extract`, `vali
 Audit trail of manual edits to extracted values: which `field` changed from `old_value` to `new_value`, and when. Values are stored as text so one table covers strings, dates and decimals. Rows are never updated. `corrected_by` is **an addition to your spec**: it is nullable and unused until authentication exists, since "who changed it" cannot be recorded without it.
 
 ### embeddings
+(Search: `document_pages.tsv` is a generated `tsvector` (`simple` configuration, so no stemming and no language assumptions) with a GIN index for keyword search; `embeddings.page_number` tells which page a chunk came from. See `docs/search.md`.)
+
 Text chunks and their vectors for semantic search. `embedding` is `vector(N)` where **N is `EMBEDDING_DIMENSION`** (default 1536). The index is **HNSW with cosine distance** (`vector_cosine_ops`, `m=16`, `ef_construction=64`), so query with `ORDER BY embedding <=> :query LIMIT k`. Unique on `(document_id, chunk_index)`.
 
 Notes on the dimension:

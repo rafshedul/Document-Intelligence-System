@@ -20,7 +20,7 @@ ID = "00000000-0000-0000-0000-000000000000"
 
 
 @pytest.mark.parametrize("method,path", [
-    ("GET", "/api/info"), ("GET", "/api/documents"), ("POST", "/api/documents/upload"),
+    ("GET", "/api/info"), ("GET", "/api/search?q=x"), ("GET", "/api/documents"), ("POST", "/api/documents/upload"),
     ("GET", f"/api/documents/{ID}"), ("GET", f"/api/documents/{ID}/status"), ("GET", f"/api/documents/{ID}/result"),
     ("PATCH", f"/api/documents/{ID}/result"), ("POST", f"/api/documents/{ID}/reprocess"),
     ("DELETE", f"/api/documents/{ID}"),

@@ -2,8 +2,8 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, Boolean, Enum, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint, text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import BigInteger, Boolean, Computed, Enum, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint, text
+from sqlalchemy.dialects.postgresql import TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, Timestamps, UUIDPrimaryKey
@@ -58,6 +58,7 @@ class DocumentPage(UUIDPrimaryKey, Base):
     # (document_id, page_number) also serves as the FK index on document_id.
     __table_args__ = (
         UniqueConstraint("document_id", "page_number", name="uq_document_pages_document_id_page_number"),
+        Index("ix_document_pages_tsv", "tsv", postgresql_using="gin"),  # keyword search
     )
 
     document_id: Mapped[uuid.UUID] = mapped_column(
@@ -70,5 +71,9 @@ class DocumentPage(UUIDPrimaryKey, Base):
     )
     # Mean OCR confidence 0-100 (Tesseract scale); NULL for digital/spreadsheet.
     ocr_confidence: Mapped[float | None] = mapped_column(Numeric(5, 2))
+    # Full-text vector kept in sync by the database. 'simple' = no stemming or stop words, so it works
+    # for any language (English, Bengali...). Not loaded unless asked for.
+    tsv = mapped_column(TSVECTOR, Computed("to_tsvector('simple', coalesce(extracted_text, ''))", persisted=True),
+                        deferred=True)
 
     document: Mapped[Document] = relationship(back_populates="pages")

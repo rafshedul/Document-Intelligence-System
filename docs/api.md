@@ -17,6 +17,7 @@ All `/api` routes need `Authorization: Bearer <API_AUTH_TOKEN>`. Every error has
 | `PATCH /api/documents/{id}/result` | Manual correction. Body: `{"invoice_index": 0, "fields": {"total": "105.00"}, "line_items": [{"position": 1, "line_total": "60.00"}], "corrected_by": "name"}`. Each change is logged in `corrections` (old value, new value, who, when), validation runs again, status is updated. | 400 nothing changed, 404, 409 still processing, 422 invalid value |
 | `POST /api/documents/{id}/reprocess` | Queue a `failed` or `needs_review` document again. The attempt number is recorded in `processing_history` (`stage = enqueue`). A new extraction version is created; manual corrections stay in the older version and in the `corrections` log. | 404, 409 wrong status, 503 |
 | `DELETE /api/documents/{id}` | Delete the record, its file and everything derived from it. 204 on success. | 404, 409 while processing |
+| `GET /api/search` | Keyword, semantic or hybrid search with filters and pagination; see [search.md](search.md). | 422 bad parameter, 503 semantic search without an embedding provider |
 | `GET /api/documents/{id}` | The result plus extracted page text (used by the web page). | 404 |
 
 ## Background job (Celery)

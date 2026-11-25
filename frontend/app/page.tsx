@@ -17,6 +17,19 @@ type Detail = {
   findings: { rule_code: string; severity: string; field: string | null; message: string; resolved: boolean }[];
 };
 
+type Hit = { document_id: string; filename: string; status: string; file_type: string; score: number; matched_by: string[];
+  snippet: { text: string; highlights: number[][]; page: number | null } | null; invoice_count: number;
+  invoice: { invoice_number: string | null; invoice_date: string | null; supplier_name: string | null; total: string | null; currency: string | null } | null };
+type SearchResult = { items: Hit[]; total: number; page: number; pages: number; truncated: boolean };
+
+// Highlights come from the server as offsets into plain text; React escapes the text, so nothing is parsed as HTML.
+const Snippet = ({ s }: { s: NonNullable<Hit["snippet"]> }) => {
+  const out: React.ReactNode[] = []; let at = 0;
+  s.highlights.forEach(([a, b], i) => { out.push(s.text.slice(at, a), <mark key={i}>{s.text.slice(a, b)}</mark>); at = b; });
+  out.push(s.text.slice(at));
+  return <span>{out}</span>;
+};
+
 const FIELD_LABELS: Record<string, string> = { invoice_number: "Invoice number", invoice_date: "Invoice date", supplier_name: "Supplier",
   customer_name: "Customer", subtotal: "Subtotal", tax: "Tax", total: "Total", currency: "Currency" };
 const MONEY = new Set(["subtotal", "tax", "total"]);
@@ -44,6 +57,13 @@ export default function Home() {
   const [pages, setPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [statusFilter, setStatusFilter] = useState("");
+  const [sq, setSq] = useState("");
+  const [smode, setSmode] = useState("hybrid");
+  const [ssupplier, setSsupplier] = useState("");
+  const [sfrom, setSfrom] = useState("");
+  const [sto, setSto] = useState("");
+  const [sres, setSres] = useState<SearchResult | null>(null);
+  const [sbusy, setSbusy] = useState(false);
   const [needLogin, setNeedLogin] = useState(false);
   const [signedIn, setSignedIn] = useState(false);  // set after mount: sessionStorage is not available during SSR
   useEffect(() => setSignedIn(!!sessionStorage.getItem(TOKEN_KEY)), [needLogin]);
@@ -99,6 +119,21 @@ export default function Home() {
     } catch { setMsg("Cannot reach the backend at " + API); }
     setPage(1);
     loadList();
+  }
+
+  async function runSearch(pageNo = 1) {
+    if (!sq.trim()) { setSres(null); return; }
+    setSbusy(true); setMsg("");
+    const q = new URLSearchParams({ q: sq, mode: smode, page: String(pageNo), page_size: "5" });
+    if (ssupplier.trim()) q.set("supplier", ssupplier.trim());
+    if (sfrom) q.set("date_from", sfrom);
+    if (sto) q.set("date_to", sto);
+    try {
+      const r = await api(`/api/search?${q}`);
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) setSres(j); else { setSres(null); setMsg(errText(j, "Search failed.")); }
+    } catch { setMsg("Cannot reach the backend at " + API); }
+    setSbusy(false);
   }
 
   async function reprocess() {
@@ -167,6 +202,43 @@ export default function Home() {
           </div>
           <input ref={input} type="file" multiple hidden onChange={e => { upload(e.target.files); e.target.value = ""; }} />
           {msg && <div className="msg" style={{ whiteSpace: "pre-line" }}>{msg}</div>}
+        </div>
+        <div className="card">
+          <h2>Search</h2>
+          <form onSubmit={e => { e.preventDefault(); runSearch(1); }} className="grid" style={{ gap: 8 }}>
+            <div className="row">
+              <input value={sq} onChange={e => setSq(e.target.value)} placeholder='words, "exact phrase", -exclude' style={{ flex: 1, padding: 6 }} />
+              <select value={smode} onChange={e => setSmode(e.target.value)}>
+                <option value="hybrid">hybrid</option><option value="keyword">keyword</option><option value="semantic">semantic</option></select>
+              <button type="submit" disabled={sbusy}>{sbusy ? "…" : "Search"}</button>
+            </div>
+            <div className="row">
+              <input value={ssupplier} onChange={e => setSsupplier(e.target.value)} placeholder="supplier contains" style={{ flex: 1, padding: 4 }} />
+              <input type="date" value={sfrom} onChange={e => setSfrom(e.target.value)} title="invoice date from" />
+              <input type="date" value={sto} onChange={e => setSto(e.target.value)} title="invoice date to" />
+            </div>
+          </form>
+          {sres && <div style={{ marginTop: 10 }}>
+            <div className="row" style={{ justifyContent: "space-between" }}>
+              <span>{sres.total} result{sres.total === 1 ? "" : "s"}{sres.truncated ? " (capped)" : ""}</span>
+              <a href="#" onClick={e => { e.preventDefault(); setSres(null); setSq(""); }}>clear</a></div>
+            {sres.items.map(h => (
+              <div key={h.document_id} className="doc" onClick={() => setSel(h.document_id)}>
+                <div className="name">{h.filename}</div>
+                <div className="meta">
+                  {h.matched_by.map(m => <Badge key={m} s="started">{m}</Badge>)}
+                  <span>score {h.score.toFixed(4)}</span><Badge s={h.status} />
+                  {h.invoice && <span>{[h.invoice.invoice_number, h.invoice.supplier_name,
+                    h.invoice.total ? `${h.invoice.total} ${h.invoice.currency ?? ""}` : null].filter(Boolean).join(" · ")}</span>}
+                </div>
+                {h.snippet && <div className="snip" style={{ marginTop: 4 }}>
+                  {h.snippet.page ? `p.${h.snippet.page}: ` : ""}<Snippet s={h.snippet} /></div>}
+              </div>))}
+            {sres.pages > 1 && <div className="row" style={{ marginTop: 8 }}>
+              <button disabled={sres.page <= 1} onClick={() => runSearch(sres.page - 1)}>‹ Prev</button>
+              <span>page {sres.page} of {sres.pages}</span>
+              <button disabled={sres.page >= sres.pages} onClick={() => runSearch(sres.page + 1)}>Next ›</button></div>}
+          </div>}
         </div>
         <div className="card">
           <h2>Documents ({total})</h2>

@@ -33,3 +33,4 @@ td.num { text-align:right; font-variant-numeric:tabular-nums; } .null { color:va
 pre { white-space:pre-wrap; background:#f3f5f9; border-radius:8px; padding:10px; margin:6px 0 0; max-height:260px; overflow:auto; font-size:12px; }
 .empty { color:var(--mute); padding:30px; text-align:center; }
 details summary { cursor:pointer; color:var(--accent); }
+mark { background:#ffe28a; border-radius:2px; padding:0 1px; }

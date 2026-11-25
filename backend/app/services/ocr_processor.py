@@ -107,6 +107,8 @@ def ocr_array(gray: np.ndarray, do_preprocess: bool = True) -> OcrResult:
                 f"Tesseract language data for '{settings.ocr_languages}' is not installed."
             ) from exc
         raise OCRError(f"OCR failed: {msg[:200]}") from exc
+    except (UnicodeDecodeError, OSError) as exc:  # Tesseract crashed and its error output was not text
+        raise OCRError("OCR could not run on this image (Tesseract failed).") from exc
     except RuntimeError as exc:  # pytesseract raises RuntimeError on timeout
         raise OCRError(f"OCR timed out after {settings.ocr_timeout_seconds}s.") from exc
 

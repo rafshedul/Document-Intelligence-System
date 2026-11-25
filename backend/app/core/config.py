@@ -52,9 +52,16 @@ class Settings(BaseSettings):
     llm_max_validation_retries: int = 2  # re-asks after invalid JSON (so up to 3 calls)
     # Embeddings: "hash" = built-in lexical hashing (no model, for demos/tests), "none" = skip the stage
     embedding_provider: str = "hash"
-    embedding_chunk_chars: int = 1000
-    embedding_chunk_overlap: int = 150
+    embedding_chunk_tokens: int = 500  # target chunk size
+    embedding_chunk_overlap_ratio: float = 0.10  # each chunk repeats the last 10% of the previous one
+    chars_per_token: float = 4.0  # rough estimate for Latin text (tokens are not counted exactly)
     embedding_batch_size: int = 64
+
+    # Search
+    search_candidates: int = 100  # documents taken from each ranking before fusion
+    search_max_results: int = 500  # results kept per query (total is capped here)
+    search_semantic_min_score: float = 0.05  # cosine similarity below this is not a match
+    search_rrf_k: int = 60  # Reciprocal Rank Fusion constant
 
     # Validation
     validation_tolerance: Decimal = Decimal("0.02")  # rounding tolerance for sums and products

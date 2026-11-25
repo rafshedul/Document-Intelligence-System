@@ -57,10 +57,21 @@ def get_embedding_client() -> EmbeddingClient | None:
     raise ValueError(f"Unknown EMBEDDING_PROVIDER '{settings.embedding_provider}'")
 
 
+def chunk_size_chars() -> tuple[int, int]:
+    """(size, overlap) in characters for ~500 tokens with 10% overlap, using chars_per_token."""
+    size = max(50, round(settings.embedding_chunk_tokens * settings.chars_per_token))
+    return size, round(size * settings.embedding_chunk_overlap_ratio)
+
+
 def chunk_text(text: str, size: int | None = None, overlap: int | None = None) -> list[str]:
-    """Split on whitespace into ~size-character chunks that overlap a little."""
-    size = size or settings.embedding_chunk_chars
-    overlap = settings.embedding_chunk_overlap if overlap is None else overlap
+    """Split on whitespace into ~500-token chunks (~2000 characters) that overlap by 10%.
+
+    Tokens are estimated from characters, not counted with the embedding model's tokenizer, so a chunk
+    is "about" 500 tokens (Bengali and other scripts use more tokens per character).
+    """
+    default_size, default_overlap = chunk_size_chars()
+    size = size or default_size
+    overlap = default_overlap if overlap is None else overlap
     text = re.sub(r"[ \t]+", " ", text).strip()
     if not text:
         return []
@@ -91,14 +102,15 @@ def embed_document(session: Session, document_id: uuid.UUID, client: EmbeddingCl
             return 0
         with stage(session, document_id, "embed") as d:
             session.execute(delete(Embedding).where(Embedding.document_id == document_id))  # idempotent
-            total, index, pending = 0, 0, []
+            total, pending = 0, []  # pending: (page_number, chunk_text)
 
             def flush():
                 nonlocal total
                 if not pending:
                     return
-                for text, vec in zip(pending, client.embed(pending)):
-                    session.add(Embedding(document_id=document_id, chunk_index=total, chunk_text=text, embedding=vec))
+                for (page_no, text), vec in zip(pending, client.embed([t for _, t in pending])):
+                    session.add(Embedding(document_id=document_id, chunk_index=total, page_number=page_no,
+                                          chunk_text=text, embedding=vec))
                     total += 1
                 session.commit()
                 pending.clear()
@@ -112,7 +124,7 @@ def embed_document(session: Session, document_id: uuid.UUID, client: EmbeddingCl
                 if not rows:
                     break
                 for page_number, text in rows:
-                    pending.extend(chunk_text(text or ""))
+                    pending.extend((page_number, c) for c in chunk_text(text or ""))
                     last_page = page_number
                     if len(pending) >= settings.embedding_batch_size:
                         flush()

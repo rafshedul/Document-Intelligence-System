@@ -17,6 +17,7 @@ upload -> detect type (extension + magic bytes) -> extract text (PDF / OCR / spr
 | File processing | PDF (PyMuPDF, page batches), OCR (Tesseract + deskew/denoise), XLSX/XLS/CSV | [processing_pipeline.md](docs/processing_pipeline.md) |
 | Extraction | Provider-neutral LLM interface, JSON-schema output, snippet verification, spreadsheet column mapping | [extraction.md](docs/extraction.md) |
 | Validation | `MISSING_FIELD`, `INVALID_NUMBER`, `LINE_ITEM_MISMATCH`, `SUBTOTAL_MISMATCH`, `TOTAL_MISMATCH`, `DUPLICATE_INVOICE`, `DUPLICATE_FILE`, `LOW_CONFIDENCE`, `INVALID_DATE`, `CROSS_DOCUMENT` | [validation.md](docs/validation.md) |
+| Search | Keyword (PostgreSQL full-text + GIN), semantic (pgvector, HNSW cosine) and hybrid (Reciprocal Rank Fusion), with filters | [search.md](docs/search.md) |
 | Database | PostgreSQL + pgvector, SQLAlchemy 2.0, Alembic | [database_schema.md](docs/database_schema.md) |
 
 Stack: FastAPI, Celery + Redis, PostgreSQL/pgvector, Tesseract, Next.js.

@@ -76,7 +76,7 @@ def count(session, d):
 
 
 def test_embed_document_is_idempotent_and_ordered(session):
-    d = doc_with_pages(session, ["alpha " * 300, "", "beta " * 300])
+    d = doc_with_pages(session, ["alpha " * 700, "", "beta " * 700])
     n = es.embed_document(session, d.id)
     assert n > 2 and count(session, d) == n
     assert es.embed_document(session, d.id) == n and count(session, d) == n  # second run replaces, not adds
